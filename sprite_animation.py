@@ -3,27 +3,39 @@
 import pygame
 import math
 
-def load_frames_from_sheet(filepath, frame_w, frame_h, target_w, target_h, target_frames):
+
+# from utils import resource_path # Kept commented as per original
+
+def load_frames_from_sheet(filepath, frame_w, frame_h, target_w, target_h, target_frames, no_scaling=False):
     """
     Loads, extracts, and scales animation frames from a sprite sheet.
     Creates default test frames if loading fails.
+
+    Args:
+        filepath (str): Path to the sprite sheet image.
+        frame_w (int): Width of a single frame in the source sheet.
+        frame_h (int): Height of a single frame in the source sheet.
+        target_w (int): Desired final width for the scaled frame.
+        target_h (int): Desired final height for the scaled frame.
+        target_frames (int): Total number of frames to extract.
+        no_scaling (bool): If True, frames are loaded but not scaled to target_w/h.
+
+    Returns:
+        list: A list of pygame.Surface objects (animation frames).
     """
+    absolute_path = filepath
     frames = []
     frame_w = math.ceil(frame_w)
     frame_h = math.ceil(frame_h)
 
     try:
-        sprite_sheet = pygame.image.load(filepath).convert_alpha()
-        print(f"✅ Sprite sheet '{filepath}' loaded successfully")
+        sprite_sheet = pygame.image.load(absolute_path).convert_alpha()
     except Exception as e:
-        print(f"❌ Failed to load sprite sheet: {e}. Creating test image...")
-        # Create a test Surface matching the frame size
+        # Failed to load image, create a visible test image as fallback.
         sprite_sheet = pygame.Surface((frame_w, frame_h), pygame.SRCALPHA)
         sprite_sheet.fill((0, 0, 0, 0))
-        # Draw a visible test shape
         pygame.draw.circle(sprite_sheet, (255, 100, 100, 180), (frame_w // 2, frame_h // 2), frame_w // 2 - 1)
 
-        # If loading failed, use the single test frame and scale it
         frames.append(sprite_sheet)
         return [pygame.transform.smoothscale(f, (target_w, target_h)).convert_alpha() for f in frames]
 
@@ -42,176 +54,201 @@ def load_frames_from_sheet(filepath, frame_w, frame_h, target_w, target_h, targe
         if len(frames) >= target_frames:
             break
 
-    # Fallback if no frames were extracted
+    # Fallback if no frames were extracted (e.g., file loaded but sheet is empty)
     if not frames:
         test_frame = pygame.Surface((target_w, target_h), pygame.SRCALPHA)
         test_frame.fill((0, 0, 0, 0))
         pygame.draw.circle(test_frame, (255, 100, 100, 180), (target_w // 2, target_h // 2), 50)
         frames = [test_frame]
     else:
-        # Scale all extracted frames to the target dimension
-        frames = [pygame.transform.smoothscale(f, (target_w, target_h)).convert_alpha() for f in frames]
+        # Conditional scaling: scale frames or just ensure alpha conversion.
+        if not no_scaling:
+            frames = [pygame.transform.smoothscale(f, (target_w, target_h)).convert_alpha() for f in frames]
+        else:
+            frames = [f.convert_alpha() for f in frames]
 
-    print(f"📊 Successfully extracted {len(frames)} frames")
     return frames
 
 
 class AnimationController:
     """
-    Manages multiple animation sequences (loaded from different sprite sheets)
-    and handles frame indexing and looping rules.
+    Manages multiple animation sequences, handles frame indexing, looping rules,
+    and transitions between sequences.
     """
+    # Defines the playback rules for different animation sub-sequences
     ANIMATION_RULES = {
-        'idle': {'type': 'loop_reverse'},
-        'start': {'type': 'one_shot', 'next': 'hold'},
+        'idle': {'type': 'loop_reverse'},  # Loop and reverse direction when boundaries reached
+        'start': {'type': 'one_shot'},  # Play once forward
         'hold': {'type': 'loop_reverse'},
-        'release': {'type': 'one_shot_reverse', 'next': 'idle'},
+        'release': {'type': 'one_shot_reverse'},  # Play once backward
+        'display': {'type': 'loop_reverse'},
+        'teleport': {'type': 'one_shot'},
+        'magic_start': {'type': 'one_shot'},
+        'magic_keep': {'type': 'loop_reverse'},
     }
 
     def __init__(self, animations_data, animation_ranges):
         """
-        animations_data: {name: frames_list}
+        Initializes the controller with loaded frames and frame ranges.
+
+        Args:
+            animations_data (dict): Mapping animation source keys (e.g., 'idle', 'drag_A_frames') to lists of frames.
+            animation_ranges (dict): Mapping sequence names (e.g., 'idle', 'drag_A_start') to (start, end) frame indices.
         """
         self.animations = animations_data
         self.animation_ranges = animation_ranges
         self.current_sequence_name = None
 
-        # 🌟 运行时状态 (Run-time State)
+        # Run-time State
         self.current_frames = []
         self.total_frames = 0
-        self.current_index = 0
+        self.current_index = 0.0  # Use float for smoother index updates if needed
         self.direction = 1  # 1: forward, -1: reverse
-        self.start_frame = 0  # 🌟 新增：当前序列的播放起始帧
-        self.end_frame = 0  # 🌟 新增：当前序列的播放结束帧
+        self.start_frame = 0  # Start index for the current sequence playback
+        self.end_frame = 0  # End index for the current sequence playback
+        self.is_playing_one_shot = False
+        self.is_finished = False
+        self.next_sequence_on_finish = None  # Name of the sequence to switch to after a one-shot finishes
 
-    def set_animation(self, sequence_name):
+    def set_animation(self, sequence_name, next_sequence=None):
         """
-        Switches to a new animation sequence and resets index.
+        Switches to a new animation sequence and resets index and playback state.
+
+        Args:
+            sequence_name (str): The name of the sequence to switch to (e.g., 'drag_A_start').
+            next_sequence (str, optional): The sequence name to transition to upon completion of a one-shot animation.
         """
         if sequence_name == self.current_sequence_name:
             return
 
-            # 🌟 关键修复 1: 检查是否为复合名称 (如 drag_A_start)
+        # 1. Determine Frame Source and Sub-sequence Name
         parts = sequence_name.split('_')
 
-        if len(parts) >= 3 and (parts[0] == 'drag' or parts[0] == 'drag'):  # 假设拖动前缀是 drag_X_
-            # 这是一个拖动动作的子序列
-            prefix = f"{parts[0]}_{parts[1]}"  # 例如 'drag_A'
-            sub_name = parts[2]  # 例如 'start'
-            frame_source_name = f"{prefix}_frames"  # 例如 'drag_A_frames'
-        else:
-            # 这是一个简单名称，如 'idle'
+        if parts[0] == 'drag':
+            # Example: 'drag_A_start' -> prefix 'drag_A', sub_name 'start', source 'drag_A_frames'
+            prefix = f"{parts[0]}_{parts[1]}"
+            sub_name = parts[2]
+            frame_source_name = f"{prefix}_frames"
+        elif sequence_name in ['magic_start', 'magic_keep']:
+            # Handle Magic animations which share the same source sheet
             prefix = None
             sub_name = sequence_name
-            frame_source_name = sequence_name  # 'idle' -> 'idle'
+            frame_source_name = 'magic'
+        else:
+            # Simple animation name (e.g., 'idle', 'teleport')
+            prefix = None
+            sub_name = sequence_name
+            frame_source_name = sequence_name
 
-        rule = self.ANIMATION_RULES.get(sub_name)
+        rule = self.ANIMATION_RULES.get(sub_name if prefix else sequence_name)
 
-        if not rule:
-            print(f"⚠️ Rule for '{sub_name}' not found.")
+        if not rule or frame_source_name not in self.animations:
             return
 
-        # 1. 确定帧列表和帧范围
-        if frame_source_name not in self.animations:
-            print(f"⚠️ Frame source '{frame_source_name}' not loaded.")
-            return
-
+        # 2. Update Frame List and Range
         self.current_sequence_name = sequence_name
         self.current_frames = self.animations[frame_source_name]
         self.total_frames = len(self.current_frames)
 
-        # 从 ranges 字典中获取播放范围
+        # Get playback range from ranges dictionary
         if sequence_name in self.animation_ranges:
             self.start_frame, self.end_frame = self.animation_ranges[sequence_name]
         else:
-            # 兜底：使用整个帧列表
+            # Fallback: use the entire frame list
             self.start_frame, self.end_frame = 0, self.total_frames - 1
 
-        # 2. 设置播放状态和方向
-        self.is_playing_one_shot = (rule['type'] == 'one_shot' or rule['type'] == 'one_shot_reverse')
+        # 3. Set Playback State and Direction
+        self.is_playing_one_shot = (rule['type'].startswith('one_shot'))
         self.is_finished = False
 
         if rule['type'] == 'one_shot_reverse':
-            # 释放动画：从当前hold的帧开始，反向播到 start_frame（例如 0 帧）
-            # 关键：从当前索引开始反向播放，但不能超过 end_frame
-            self.current_index = min(int(self.current_index), self.end_frame)
+            # Reverse animation (e.g., 'release'): Start at the end frame, move backward.
+            self.current_index = float(self.end_frame)
             self.direction = -1
         else:
-            # start/hold 动画：从起始帧开始播放
-            self.current_index = self.start_frame
+            # Forward animation (e.g., 'start', 'loop'): Start at the start frame, move forward.
+            self.current_index = float(self.start_frame)
             self.direction = 1
 
-        print(f"📊 Switched to: {sequence_name} (Range: {self.start_frame}-{self.end_frame}, Type: {rule['type']})")
+        # Save the next sequence name for transition
+        self.next_sequence_on_finish = next_sequence
 
     def update_frame(self):
         """
-        Updates the animation frame index for the current sequence.
+        Updates the animation frame index for the current sequence based on its rule.
         """
         if self.total_frames <= 1 or self.is_finished:
             return
 
         self.current_index += self.direction
 
-        # --- 🌟 单次动画处理 (One-Shot Logic) 🌟 ---
+        # --- One-Shot Logic ---
         if self.is_playing_one_shot:
-            print(f"DEBUG: Current sequence '{self.current_sequence_name}' is One-Shot.")
-            # 正向播放，到达末尾
+
+            # Forward playback, reached end boundary
             if self.direction == 1 and self.current_index > self.end_frame:
-                self.current_index = self.end_frame
+                self.current_index = float(self.end_frame)
                 self.is_finished = True
 
-            # 反向播放，到达起始
+            # Reverse playback, reached start boundary
             elif self.direction == -1 and self.current_index < self.start_frame:
-                self.current_index = self.start_frame
+                self.current_index = float(self.start_frame)
                 self.is_finished = True
 
             return
 
-        # --- 循环动画处理 (Loop Logic) ---
-        print(f"DEBUG: Current sequence '{self.current_sequence_name}' is LOOPING.")
-        # 循环播放，到达末尾
+        # --- Loop Logic (Loop & Reverse) ---
+
+        # Looping forward, reached end boundary
         if self.current_index > self.end_frame:
             self.direction = -1
-            self.current_index = self.end_frame - 1 if self.end_frame > self.start_frame else self.start_frame
+            # Adjust index to prevent immediate flip back if range is too small
+            self.current_index = float(self.end_frame - 1) if self.end_frame > self.start_frame else float(
+                self.start_frame)
 
-        # 循环播放，到达起始
+        # Looping backward, reached start boundary
         elif self.current_index < self.start_frame:
             self.direction = 1
-            self.current_index = self.start_frame + 1 if self.end_frame > self.start_frame else self.start_frame
+            self.current_index = float(self.start_frame + 1) if self.end_frame > self.start_frame else float(
+                self.start_frame)
 
     def get_current_frame(self):
-        """Returns the current Pygame Surface."""
+        """Returns the current Pygame Surface frame."""
         if not self.current_frames:
-            # 安全返回一个空 Surface
+            # Safe fallback: return a minimal transparent Surface
             return pygame.Surface((1, 1), pygame.SRCALPHA)
 
+        # Ensure index is within the bounds [0, total_frames - 1]
         index = max(0, min(int(self.current_index), self.total_frames - 1))
         return self.current_frames[index]
 
     def check_finished_and_advance(self):
         """
-        检查单次动画是否完成。在 pet_states.py 中调用。
-        如果完成，返回下一个动作名称 (例如 'dragging_hold')。
+        Checks if a one-shot animation has finished.
+        If finished, it handles the transition to the next predefined sequence.
+
+        Returns:
+            str/bool/None: The name of the sequence switched to (str),
+                           True if finished but no next sequence, or None if still playing.
         """
-        if self.is_finished:
-            sequence_name = self.current_sequence_name
-            parts = sequence_name.split('_')
+        if self.is_finished and self.is_playing_one_shot:
 
-            # 如果是拖动动作 (e.g., drag_A_release)，则获取子序列名 'release'
-            if len(parts) >= 3 and parts[0] == 'drag':
-                sub_name = parts[2]
-            else:
-                sub_name = sequence_name  # 如果是 'idle' 或其他简单名称
-
-            rule = self.ANIMATION_RULES.get(sub_name)
-
-            # 🌟 关键：重置 finished 标志，防止在下一帧再次触发
+            # Reset finished flag immediately to allow next state to react
             self.is_finished = False
 
-            # 检查规则中是否有明确的下一个状态
-            if rule and 'next' in rule:
-                return rule['next']
+            # 1. Check for a predefined next sequence (e.g., magic_start -> magic_keep)
+            if self.next_sequence_on_finish:
+                name_to_advance = self.next_sequence_on_finish
 
-            # 如果是单次播放但没有定义 'next'，默认返回 None
-            return None
+                # Clear next_sequence flag
+                self.next_sequence_on_finish = None
+
+                # Transition to the next sequence
+                self.set_animation(name_to_advance)
+
+                return name_to_advance
+
+            # 2. No predefined next sequence (e.g., teleport finished -> needs state change)
+            return True
+
         return None

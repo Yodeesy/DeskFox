@@ -1,0 +1,6 @@
+{
+    "rest_interval_minutes": 0.5,
+    "rest_duration_seconds": 30,
+    "current_x": 100,
+    "current_y": 100
+}

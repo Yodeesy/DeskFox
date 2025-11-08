@@ -6,12 +6,10 @@ import numpy as np
 import pygame
 import win32con
 import win32gui
-import sys
 
 # === Windows API References ===
 user32 = ctypes.windll.user32
 gdi32 = ctypes.windll.gdi32
-
 
 # === Windows API Structures Definitions ===
 class POINT(Structure):

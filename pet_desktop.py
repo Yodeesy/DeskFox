@@ -6,63 +6,114 @@ import win32con
 import win32gui
 # Import created modules
 import window_manager as wm
-from pet_states import IdleState
+from pet_states import IdleState, TeleportState, MagicState
+from settings_gui import SettingsWindow
 from sprite_animation import load_frames_from_sheet, AnimationController
+from effects import DynamicEffectController
 
 
 class DesktopPet:
-    def __init__(self, width, height, fps, animation_config):
+    """Manages the Pygame application loop, window handling, state machine, and resource loading."""
+
+    # Constant: Easing rate for smooth window following
+    FOLLOW_EASING_RATE = 0.2  # Value between 0 and 1. Smaller value means smoother/delayed following.
+
+    def __init__(self, width, height, fps, animation_config, initial_config):
         pygame.init()
+
+        # --- Configuration Initialization ---
+        self.rest_interval_ms = initial_config.get("rest_interval_minutes", 60) * 60 * 1000
+        self.rest_duration_ms = initial_config.get("rest_duration_seconds", 30) * 1000
+
+        # Timer start point (in milliseconds since Pygame init)
+        self.rest_timer_start_time = pygame.time.get_ticks()
+
+        # --- Size and Performance ---
         self.width = width
         self.height = height
+        self.original_width = width
+        self.original_height = height
+        self.display_width = 350  # Default size for settings follow mode
+        self.display_height = 350
         self.fps = fps
         self.running = True
         self.clock = pygame.time.Clock()
 
-        # 1. Initialize hidden Pygame window
+        # --- Window Setup ---
         pygame.display.set_mode((self.width, self.height), pygame.NOFRAME)
         self.hwnd = pygame.display.get_wm_info()["window"]
-        print("✅ Pygame window created")
 
-        # 2. Calculate initial position (screen center)
-        screen_info = pygame.display.Info()
-        start_x = (screen_info.current_w - self.width) // 2
-        start_y = (screen_info.current_h - self.height) // 2
+        # Calculate initial position (screen center)
+        # Get screen resolution
+        screen_modes = pygame.display.get_desktop_sizes()
+        if screen_modes and screen_modes[0] != -1:
+            self.full_screen_width, self.full_screen_height = screen_modes[0]
+        else:
+            self.full_screen_width = pygame.display.Info().current_w
+            self.full_screen_height = pygame.display.Info().current_h
+        start_x = (self.full_screen_width - self.width) // 2
+        start_y = (self.full_screen_height - self.height) // 2
 
-        # Store current window position (mutable list)
+        # Store current window position (mutable list [x, y])
         self.current_window_pos = [start_x, start_y]
+        self.position_before_display = [start_x, start_y]  # Position to return to after large mode
 
-        # 3. Configure layered window style
+        # Configure layered window style
         try:
             wm.setup_layered_window(self.hwnd, self.width, self.height, start_x, start_y)
         except Exception as e:
-            print(f"❌ Window configuration failed: {e}")
+            # Handle window configuration failure, often harmless in initial Pygame setup
+            pass
 
-        # 4. Load animation resources
+        # --- Animation Loading ---
         all_animations = {}
-        # --- 加载 Idle 动画 ---
+        self.animation_ranges = {}
+
+        # Load Idle animation
         idle_config = animation_config["idle"]
         idle_frames = load_frames_from_sheet(
             idle_config["filepath"], idle_config["frame_w"], idle_config["frame_h"],
             self.width, self.height, idle_config["total_frames"]
         )
         all_animations['idle'] = idle_frames
+        self.animation_ranges["idle"] = idle_config["ranges"]["idle"]
 
-        # 🌟 存储所有动画的范围（包括 idle）
-        self.animation_ranges = {"idle": idle_config["ranges"]["idle"]}
+        # Load Display animation
+        display_config = animation_config["display"]
+        display_frames = load_frames_from_sheet(
+            display_config["filepath"], display_config["frame_w"], display_config["frame_h"],
+            self.width, self.height, display_config["total_frames"], no_scaling=True  # Frames not scaled at load time
+        )
+        all_animations['display'] = display_frames
+        self.animation_ranges['display'] = display_config["ranges"]["display"]
 
-        # 🌟 关键修改：加载所有 Dragging 动作 🌟
+        # Load Teleport animation
+        teleport_config = animation_config["teleport"]
+        teleport_frames = load_frames_from_sheet(
+            teleport_config["filepath"], teleport_config["frame_w"], teleport_config["frame_h"],
+            self.width, self.height, teleport_config["total_frames"]
+        )
+        all_animations['teleport'] = teleport_frames
+        self.animation_ranges['teleport'] = teleport_config["ranges"]["teleport"]
+
+        # Load Magic animation (for full screen effect)
+        magic_config = animation_config["magic"]
+        magic_frames = load_frames_from_sheet(
+            magic_config["filepath"], magic_config["frame_w"], magic_config["frame_h"],
+            self.width, self.height, magic_config["total_frames"], no_scaling=True  # Frames not scaled at load time
+        )
+        all_animations['magic'] = magic_frames
+        for sub_name, ranges in magic_config["ranges"].items():
+            self.animation_ranges[f"{sub_name}"] = ranges
+
+        # Load all Dragging options
         dragging_options = animation_config["dragging"]
-
-        # 新增属性：存储所有可用的拖动前缀 (例如 ['drag_A', 'drag_B'])
-        self.available_drag_prefixes = []
+        self.available_drag_prefixes = []  # e.g., ['drag_A', 'drag_B']
 
         for group in dragging_options:
             prefix = group["prefix"]
             self.available_drag_prefixes.append(prefix)
-            print(f"🎨 Loading ALL dragging group: {prefix}")
 
-            # --- 加载该组的精灵表 ---
             drag_frames = load_frames_from_sheet(
                 group["filepath"],
                 group["frame_w"],
@@ -72,34 +123,257 @@ class DesktopPet:
                 group["total_frames"]
             )
             frame_key = f"{prefix}_frames"
-            # 只有当 drag_frames 不为空时才添加到 all_animations 字典
+
             if drag_frames:
                 all_animations[frame_key] = drag_frames
-            else:
-                print(f"❌ WARNING: {prefix} frames list is empty. Check sprite sheet.")
 
-            # 🌟 新增调试打印 🌟
-            print(f"DEBUG: Stored frames for key '{frame_key}'. List length: {len(drag_frames)}")
-
-            # --- 存储帧范围 ---
+            # Store frame ranges for sub-sequences (e.g., self.animation_ranges['drag_A_start'])
             for sub_name, ranges in group["ranges"].items():
-                # 存储每个子序列的范围，例如: self.animation_ranges['drag_A_start']
                 self.animation_ranges[f"{prefix}_{sub_name}"] = ranges
 
-        self.animator = AnimationController(all_animations, self.animation_ranges)  # 初始化新的控制器
+        self.animator = AnimationController(all_animations, self.animation_ranges)
 
-        # 5. Dragging state management
+        # --- Runtime State and Resources ---
         self.drag_start_pos = None  # Mouse screen position at drag start
         self.drag_window_pos = None  # Window position at drag start
 
-        # 6. Drawing surface (for transparent rendering)
+        # Drawing surface (used for transparent rendering)
         self.draw_surface = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
 
         self.state = None
         self.change_state(IdleState(self))
+        self.settings_window = None
+        self.dynamic_effect = None
+        self.tk_root = None  # Tkinter root will be set by main.py
+
+    def start_dynamic_effect(self):
+        """Initializes and starts the dynamic effect controller (e.g., rain)."""
+        # The effect controller uses the CURRENT window size (which should be full screen)
+        self.dynamic_effect = DynamicEffectController(
+            self.width,
+            self.height,
+            count=600  # Default count increased for better visibility
+        )
+
+    def stop_dynamic_effect(self):
+        """Stops the dynamic effect by clearing the controller instance."""
+        self.dynamic_effect = None
+
+    def update(self):
+        """
+        Handles state updates, animation advancement, and eye rest timer checks.
+        """
+        # Update the current state logic (animation, position, transitions)
+        self.state.update()
+
+        # Check the eye rest reminder timer
+        self._check_rest_timer()
+
+    def _check_rest_timer(self):
+        """
+        Checks if the rest interval has been reached and triggers the Teleport State if conditions are met.
+        """
+        current_time = pygame.time.get_ticks()
+        elapsed_time = current_time - self.rest_timer_start_time
+
+        # Conditions for triggering rest:
+        # 1. Pet must be in the IdleState (avoiding interruption during interaction)
+        # 2. Elapsed time must be greater than or equal to the interval
+        if (self.state.__class__ is IdleState) and (elapsed_time >= self.rest_interval_ms):
+            # Trigger state change: Enter Teleport state
+            self.change_state(TeleportState(self))
+
+    def smooth_move_to_target(self, target_x, target_y):
+        """
+        Moves the Pygame window smoothly towards the target position using an easing algorithm.
+        """
+        current_x, current_y = self.current_window_pos
+
+        dx = target_x - current_x
+        dy = target_y - current_y
+
+        # If the distance is minimal, snap to target to prevent jitter
+        if abs(dx) < 1 and abs(dy) < 1:
+            new_x = target_x
+            new_y = target_y
+        else:
+            # Calculate movement step (applying easing factor)
+            move_x = dx * self.FOLLOW_EASING_RATE
+            move_y = dy * self.FOLLOW_EASING_RATE
+
+            new_x = int(current_x + move_x)
+            new_y = int(current_y + move_y)
+
+        # Update the Win32 window position
+        wm.set_window_position(
+            self.hwnd,
+            new_x,
+            new_y,
+            self.width,
+            self.height
+        )
+
+        # Update internal stored position
+        self.current_window_pos[0] = new_x
+        self.current_window_pos[1] = new_y
+
+    def update_display_follow(self):
+        """
+        Called by the GUI's <Configure> event to update the pet's target position
+        when following the settings window.
+        """
+        gui_window = self.settings_window
+
+        if gui_window and gui_window.winfo_exists():
+            # 1. Get GUI window screen position and size
+            gui_x = gui_window.winfo_rootx()
+            gui_y = gui_window.winfo_rooty()
+            gui_w = gui_window.winfo_width()
+            gui_h = gui_window.winfo_height()
+
+            # 2. Calculate pet target position (e.g., bottom-right corner of the GUI)
+            margin = 10
+            pet_w = self.width
+            pet_h = self.height
+
+            # Target position calculation adjusted for aesthetics
+            target_x = gui_x + gui_w - pet_w - margin + 50
+            target_y = gui_y + gui_h - pet_h - margin + 50
+
+            # 3. Execute smooth movement
+            self.smooth_move_to_target(target_x, target_y)
+
+    def set_display_mode(self, is_display_mode):
+        """
+        Controls the pet window's size, position, and top-most status for settings following.
+        """
+        if is_display_mode:
+            # Enter Display Mode: Save current position, enlarge window, make top-most
+            self.position_before_display = [self.current_window_pos[0], self.current_window_pos[1]]
+
+            target_w = self.display_width
+            target_h = self.display_height
+
+            # Force Pygame to update Surface and window information
+            pygame.display.set_mode((target_w, target_h), pygame.NOFRAME)
+            self.draw_surface = pygame.Surface((target_w, target_h), pygame.SRCALPHA)
+
+            # Update Pygame internal dimensions
+            self.width = target_w
+            self.height = target_h
+
+            # Reconfigure layered window
+            wm.setup_layered_window(self.hwnd, target_w, target_h, self.current_window_pos[0],
+                                    self.current_window_pos[1])
+
+            # Force top-most status
+            win32gui.SetWindowPos(self.hwnd, win32con.HWND_TOPMOST, 0, 0, 0, 0,
+                                  win32con.SWP_NOMOVE | win32con.SWP_NOSIZE)
+
+        else:
+            # Exit Display Mode: Restore original size and position
+            target_w = self.original_width
+            target_h = self.original_height
+
+            self.width = target_w
+            self.height = target_h
+
+            pygame.display.set_mode((target_w, target_h), pygame.NOFRAME)
+            self.draw_surface = pygame.Surface((target_w, target_h), pygame.SRCALPHA)
+
+            # Restore to the position before entering display mode
+            target_x = self.position_before_display[0]
+            target_y = self.position_before_display[1]
+
+            wm.setup_layered_window(self.hwnd, target_w, target_h, target_x, target_y)
+
+            # Remove top-most status
+            win32gui.SetWindowPos(self.hwnd, win32con.HWND_NOTOPMOST, 0, 0, 0, 0,
+                                  win32con.SWP_NOMOVE | win32con.SWP_NOSIZE)
+
+            # Update internal position
+            self.current_window_pos[0] = target_x
+            self.current_window_pos[1] = target_y
+
+    def teleport_and_enlarge(self):
+        """
+        Instantly moves the pet window to the screen center (0, 0 for full screen)
+        and resizes it to the full-screen dimensions for the Magic state.
+        """
+
+        # 1. Determine target dimensions (Full Screen)
+        target_w = self.full_screen_width
+        target_h = self.full_screen_height
+
+        # 2. Target position is the top-left corner
+        target_x = 0
+        target_y = 0
+
+        # 3. Save current position for later restoration
+        self.position_before_display = [self.current_window_pos[0], self.current_window_pos[1]]
+
+        # 4. Update Pygame internal size and Surface
+        pygame.display.set_mode((target_w, target_h), pygame.NOFRAME)
+        self.draw_surface = pygame.Surface((target_w, target_h), pygame.SRCALPHA)
+        self.width = target_w
+        self.height = target_h
+
+        # 5. Force Win32 window resize and reposition (Teleport)
+        wm.set_window_position(
+            self.hwnd,
+            target_x,
+            target_y,
+            target_w,
+            target_h
+        )
+
+        # 6. Reconfigure layered window
+        wm.setup_layered_window(self.hwnd, target_w, target_h, target_x, target_y)
+
+        # 7. Force top-most status
+        win32gui.SetWindowPos(self.hwnd, win32con.HWND_TOPMOST, 0, 0, 0, 0,
+                              win32con.SWP_NOMOVE | win32con.SWP_NOSIZE)
+
+        # 8. Update internal position
+        self.current_window_pos[0] = target_x
+        self.current_window_pos[1] = target_y
+
+    def reset_rest_timer(self):
+        """
+        Resets the eye rest timer, starting the interval countdown from the current time.
+        Called after the rest state exits.
+        """
+        self.rest_timer_start_time = pygame.time.get_ticks()
+
+    def update_rest_config(self, interval_ms, duration_ms):
+        """
+        Called by the GUI to update the rest reminder interval and duration.
+
+        Args:
+            interval_ms (int): New rest interval in milliseconds.
+            duration_ms (int): New rest duration in milliseconds.
+        """
+
+        self.rest_interval_ms = interval_ms
+        self.rest_duration_ms = duration_ms
+
+        # Immediately reset the timer to start calculating the new interval
+        self.rest_timer_start_time = pygame.time.get_ticks()
+
+    def open_settings(self):
+        """Opens or activates the settings window."""
+        # Avoid creating duplicate windows
+        if not hasattr(self,
+                       'settings_window') or self.settings_window is None or not self.settings_window.winfo_exists():
+            # Pass the Tk root and the pet instance
+            self.settings_window = SettingsWindow(self.tk_root, self)
+
+        # If the window exists, bring it to the front
+        else:
+            self.settings_window.lift()
 
     def change_state(self, new_state):
-        """切换到新的宠物状态。"""
+        """Switches the pet to a new state."""
         if self.state is not None:
             self.state.exit()
 
@@ -107,10 +381,11 @@ class DesktopPet:
         self.state.enter()
 
     def is_click_on_sprite(self, mouse_x, mouse_y):
-        """Checks if the mouse click is on a non-transparent area of the sprite."""
+        """Checks if the mouse click is on a non-transparent area of the pet sprite."""
         current_frame = self.animator.get_current_frame()
         # Check if within window bounds
-        if 0 <= mouse_x < self.width and 0 <= mouse_y < self.height:
+        # Note: Must use original_width/height as collision should only happen in the small window size
+        if 0 <= mouse_x < self.original_width and 0 <= mouse_y < self.original_height:
             try:
                 # Get Alpha value at the click position
                 pixel_color = current_frame.get_at((mouse_x, mouse_y))
@@ -121,12 +396,27 @@ class DesktopPet:
         return False
 
     def render(self):
-        """Renders the current frame to the layered window."""
-        # 1. Draw current frame to Surface
-        self.draw_surface.fill((0, 0, 0, 0))  # Clear Surface with transparent color
-        self.draw_surface.blit(self.animator.get_current_frame(), (0, 0))
+        """Renders the current frame and dynamic effects to the layered window."""
 
-        # 2. Call window_manager to update the layered window
+        # 1. Clear Surface with transparent color
+        self.draw_surface.fill((0, 0, 0, 0))
+
+        # Get the current animation frame
+        pet_frame = self.animator.get_current_frame()
+
+        # Calculate center position relative to draw_surface
+        pet_x = (self.width - pet_frame.get_width()) // 2
+        pet_y = (self.height - pet_frame.get_height()) // 2
+
+        # Draw full-screen dynamic background in MagicState
+        if isinstance(self.state, MagicState) and self.animator.current_sequence_name == 'magic_keep' and self.dynamic_effect:
+            # 1. Draw dynamic effect over the entire draw_surface
+            self.dynamic_effect.update_and_draw(self.draw_surface)
+
+        # 2. Draw the pet sprite frame (on top of effects)
+        self.draw_surface.blit(pet_frame, (pet_x, pet_y))
+
+        # 3. Call window_manager to update the layered window
         wm.update_layered_window(
             self.hwnd,
             self.draw_surface,
@@ -136,24 +426,47 @@ class DesktopPet:
 
     def run(self):
         """Main application loop."""
+
+        def check_tk_root():
+            """Handles events for the hidden Tkinter root and any Toplevel windows."""
+            try:
+                # Process Tkinter events (button clicks, window updates)
+                self.tk_root.update_idletasks()
+                self.tk_root.update()
+            except Exception:
+                # Ignore common Tkinter errors that occur when the root window is destroyed
+                pass
+
         while self.running:
+            check_tk_root()
+
+            # --- Event Handling ---
             for event in pygame.event.get():
-                if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
+                if event.type == pygame.QUIT:
                     self.running = False
                     break
+                elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 3:
+                    # Right-click: open settings window
+                    self.open_settings()
+
+                self.state.handle_event(event)
+
             if not self.running:
                 break
 
+            # --- Game Logic Update ---
             self.state.handle_input()
-            self.state.update()
+            self.update()
 
+            # --- Rendering ---
             self.render()
 
+            # Cap frame rate
             self.clock.tick(self.fps)
 
         self.cleanup()
 
     def cleanup(self):
-        """Cleanup resources upon exit."""
+        """Cleans up Pygame and exits the application."""
         pygame.quit()
         sys.exit()
