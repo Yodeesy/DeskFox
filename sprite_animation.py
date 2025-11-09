@@ -2,9 +2,7 @@
 
 import pygame
 import math
-
-
-# from utils import resource_path # Kept commented as per original
+from utils import resource_path  # Kept commented as per original
 
 def load_frames_from_sheet(filepath, frame_w, frame_h, target_w, target_h, target_frames, no_scaling=False):
     """
@@ -23,7 +21,7 @@ def load_frames_from_sheet(filepath, frame_w, frame_h, target_w, target_h, targe
     Returns:
         list: A list of pygame.Surface objects (animation frames).
     """
-    absolute_path = filepath
+    absolute_path = resource_path(filepath)
     frames = []
     frame_w = math.ceil(frame_w)
     frame_h = math.ceil(frame_h)

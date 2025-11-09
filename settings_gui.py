@@ -348,5 +348,19 @@ class SettingsWindow(ctk.CTkToplevel):
     def close_window(self):
         """Closes the settings window and returns the pet to the Idle state if it was following."""
         self.destroy()
+
         if self.pet.state.__class__.__name__ == 'DisplayState':
             self.pet.change_state(IdleState(self.pet))
+
+        import win32con
+        import win32gui
+
+        try:
+            win32gui.SetWindowPos(
+                self.pet.hwnd,
+                win32con.HWND_TOPMOST,
+                0, 0, 0, 0,
+                win32con.SWP_NOMOVE | win32con.SWP_NOSIZE
+            )
+        except Exception as e:
+            print(f"Error resetting window Z-order: {e}")

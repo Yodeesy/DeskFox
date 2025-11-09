@@ -3,8 +3,9 @@
 import json
 import os
 from typing import Dict, Any
+from utils import resource_path
 
-CONFIG_FILE_NAME = "pet_config.json"
+CONFIG_FILE_NAME = resource_path("pet_config.json")
 
 
 def load_config(default_config: Dict[str, Any]) -> Dict[str, Any]:

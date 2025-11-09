@@ -48,20 +48,17 @@ class DynamicEffectController:
         # Initialize the specified number of raindrops
         self.drops = [Raindrop(screen_w, screen_h) for _ in range(count)]
 
+        self.dark_overlay = pygame.Surface((screen_w, screen_h), pygame.SRCALPHA)
+        darkness = 30
+        self.dark_overlay.fill((0, 0, 0, darkness))
+
     def update_and_draw(self, surface):
         """
         Updates the position of all drops and draws them onto the surface,
         including a darkening overlay for atmospheric effect.
         """
-
-        # Optimization: Apply a slight darkening overlay to the entire surface
-        # This gives the rain a more visible and atmospheric look against the desktop.
-        dark_overlay = pygame.Surface(surface.get_size(), pygame.SRCALPHA)
-        darkness_alpha = 30  # Alpha value (0-255). Higher value means darker overlay.
-        dark_overlay.fill((0, 0, 0, darkness_alpha))
-
         # Blit the darkening layer onto the main surface
-        surface.blit(dark_overlay, (0, 0))
+        surface.blit(self.dark_overlay, (0, 0))
 
         # Update and draw each individual raindrop
         for drop in self.drops:
