@@ -79,6 +79,18 @@ ANIMATION_CONFIG = {
             "magic_keep": (103, 119),
         }
     },
+    "fishing": {
+        "filepath": "assets/fishing.png",
+        "frame_w": 350,
+        "frame_h": 350,
+        "total_frames": 120,
+        "ranges": {"fishing": (0, 119)}
+    },
+    "result": {
+        "filepath": "assets/result.jpg",
+        "frame_w": 150,
+        "frame_h": 150
+    },
 }
 
 # Default configuration used if the config file does not exist

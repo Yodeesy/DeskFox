@@ -6,7 +6,7 @@ import win32con
 import win32gui
 # Import created modules
 import window_manager as wm
-from pet_states import IdleState, TeleportState, MagicState
+from pet_states import IdleState, TeleportState, MagicState, FishingState
 from settings_gui import SettingsWindow
 from sprite_animation import load_frames_from_sheet, AnimationController
 from effects import DynamicEffectController
@@ -22,11 +22,14 @@ class DesktopPet:
         pygame.init()
 
         # --- Configuration Initialization ---
-        self.rest_interval_ms = initial_config.get("rest_interval_minutes", 60) * 60 * 1000
-        self.rest_duration_ms = initial_config.get("rest_duration_seconds", 30) * 1000
+        self.config = initial_config
+        self.rest_interval_ms = self.config.get("rest_interval_minutes", 60) * 60 * 1000
+        self.rest_duration_ms = self.config.get("rest_duration_seconds", 30) * 1000
+        self.fishing_cooldown_ms = self.config.get("fishing_cooldown_minutes", 60) * 60 * 1000
 
         # Timer start point (in milliseconds since Pygame init)
         self.rest_timer_start_time = pygame.time.get_ticks()
+        self.fishing_timer_start_time = pygame.time.get_ticks()
 
         # --- Size and Performance ---
         self.width = width
@@ -106,6 +109,15 @@ class DesktopPet:
         for sub_name, ranges in magic_config["ranges"].items():
             self.animation_ranges[f"{sub_name}"] = ranges
 
+        # Load Fishing animation
+        fishing_config = animation_config["fishing"]
+        fishing_frames = load_frames_from_sheet(
+            fishing_config["filepath"], fishing_config["frame_w"], fishing_config["frame_h"],
+            self.width, self.height, fishing_config["total_frames"]
+        )
+        all_animations['fishing'] = fishing_frames
+        self.animation_ranges['fishing'] = fishing_config["ranges"]["fishing"]
+
         # Load all Dragging options
         dragging_options = animation_config["dragging"]
         self.available_drag_prefixes = []  # e.g., ['drag_A', 'drag_B']
@@ -166,8 +178,9 @@ class DesktopPet:
         # Update the current state logic (animation, position, transitions)
         self.state.update()
 
-        # Check the eye rest reminder timer
+        # Check the reminder timers
         self._check_rest_timer()
+        self._check_fishing_timer()
 
     def _check_rest_timer(self):
         """
@@ -182,6 +195,20 @@ class DesktopPet:
         if (self.state.__class__ is IdleState) and (elapsed_time >= self.rest_interval_ms):
             # Trigger state change: Enter Teleport state
             self.change_state(TeleportState(self))
+
+    def _check_fishing_timer(self):
+        """
+        Checks if the fishing interval has been reached and triggers the Fishing State if conditions are met.
+        """
+        current_time = pygame.time.get_ticks()
+        elapsed_time = current_time - self.fishing_timer_start_time
+
+        # Conditions for triggering rest:
+        # 1. Pet must be in the IdleState (avoiding interruption during interaction)
+        # 2. Elapsed time must be greater than or equal to the interval
+        if (self.state.__class__ is IdleState) and (elapsed_time >= self.fishing_cooldown_ms):
+            # Trigger state change: Enter Fishing state
+            self.change_state(FishingState(self))
 
     def smooth_move_to_target(self, target_x, target_y):
         """
@@ -344,6 +371,13 @@ class DesktopPet:
         Called after the rest state exits.
         """
         self.rest_timer_start_time = pygame.time.get_ticks()
+
+    def reset_fishing_cooldown(self):
+        """
+        Resets the fishing timer, starting the interval countdown from the current time.
+        Called after the fishing state exits.
+        """
+        self.fishing_timer_start_time = pygame.time.get_ticks()
 
     def update_rest_config(self, interval_ms, duration_ms):
         """

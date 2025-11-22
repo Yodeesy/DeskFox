@@ -287,3 +287,58 @@ class MagicState(PetState):
 
         # 2. Reset the main eye-rest timer in DesktopPet
         self.pet.reset_rest_timer()
+
+
+class FishingState(PetState):
+    """
+    狐狸钓鱼状态。负责播放钓鱼动画、计时，并在时间结束后触发结果。
+    """
+
+    def __init__(self, pet):
+        super().__init__(pet)
+        # 钓鱼成功率（本地处理）
+        self.success_rate = self.pet.config.get('fishing_success_rate', 0.50)
+
+    def enter(self):
+        """进入钓鱼状态：切换到钓鱼动画"""
+        print("Starting one-shot fishing animation.")
+        self.pet.animator.set_animation('fishing')
+
+
+    def update(self):
+        """在每一帧更新状态：检查动画是否播放完毕。"""
+        super().update()  # 确保这一行会更新 animators，推进帧数
+
+        # 🌟 关键：检查动画是否播放完毕 🌟
+        if self.pet.animator.check_finished_and_advance():
+            self.handle_fishing_finished()
+            self.pet.change_state(IdleState(self.pet))
+
+    def handle_fishing_finished(self):
+        """处理动画播放完毕后的逻辑：决定成功/失败、重置冷却、切换状态。"""
+
+        # 1. 关键：重置冷却计时器
+        self.pet.reset_fishing_cooldown()
+
+        # 2. 决定是否成功并获取故事 (与之前逻辑相同)
+        is_successful = random.random() < self.success_rate
+        story_content = None
+        story_id_to_fetch = None
+
+        if is_successful:
+            # 假设 self.pet.story_manager 存在
+            story_id_to_fetch = self.pet.story_manager.get_next_story_id()
+
+            if story_id_to_fetch is not None:
+                # 假设 fetch_story_sync() 存在
+                story_content = self.pet.story_manager.fetch_story_sync(story_id_to_fetch)
+
+            if story_content:
+                self.pet.handle_fishing_result(True, story_content, story_id_to_fetch)
+            else:
+                self.pet.handle_fishing_result(False, "漂流瓶自己跑走了...（真的不是狐狸放跑的哇！！）")
+        else:
+            self.pet.handle_fishing_result(False)
+
+        # 3. 切换回闲置状态
+        self.pet.change_state(IdleState(self.pet))

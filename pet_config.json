@@ -1,6 +1,8 @@
 {
-    "rest_interval_minutes": 15,
+    "rest_interval_minutes": 45,
     "rest_duration_seconds": 30,
+    "fishing_cooldown_minutes": 0.5,
+    "fishing_success_rate": 0.64,
     "current_x": 100,
     "current_y": 100
 }

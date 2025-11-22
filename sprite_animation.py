@@ -83,6 +83,7 @@ class AnimationController:
         'teleport': {'type': 'one_shot'},
         'magic_start': {'type': 'one_shot'},
         'magic_keep': {'type': 'loop_reverse'},
+        'fishing': {'type': 'one_shot'},
     }
 
     def __init__(self, animations_data, animation_ranges):

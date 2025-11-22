@@ -75,9 +75,9 @@ def extract_spritesheet_with_alpha_mask(video_path, output_dir, frame_skip=1, to
 
 if __name__ == "__main__":
     # 設置您的 MP4 影片路徑
-    VIDEO_FILE = "../teleport.mp4"
+    VIDEO_FILE = "../fishing.mp4"
     # 設置輸出目錄
-    OUTPUT_FOLDER = "../extracted_sprites/teleport"
+    OUTPUT_FOLDER = "../extracted_sprites/fishing_"
     # 顏色容忍度：需要根據您的影片調整。
     # 角色邊緣的白色殘留 (噪點) 越少，這個值可以設置得越高。
     # 建議從 20-30 開始測試。
