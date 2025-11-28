@@ -1,3 +1,4 @@
 {
-    "pathname": "/zst"
+    "pathname": "/zst",
+    "staticpath": "./static"
 }

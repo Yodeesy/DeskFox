@@ -1,0 +1,110 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    padding-top: 80px;
+    background-color: aliceblue;
+}
+
+.navbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 3%;
+    background-color: #fff;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 1000;
+    height: 80px;
+}
+
+.navbar .header-container {
+    display: flex;
+    height: 100%;
+    align-items: center;
+}
+
+.navbar .header-container .logo {
+    height: 60px;
+    margin: 10px;
+}
+
+.navbar .header-container .title {
+    line-height: 80px;
+    font-size: 40px;
+    font-family: 'consolas';
+}
+
+.navbar .dl-btn {
+    height: 50px;
+    width: 140px;
+    line-height: 5%;
+    font-size: 16px;
+    background-color: black;
+    color: white;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.navbar .dl-btn:hover {
+    transform: scale(1.05);
+}
+
+.content {
+    width: 100%;
+    /* height: 3000px; */
+    /* background-color: aliceblue; */
+}
+
+.footer {
+    width: 100%;
+    height: 130px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    background-color: #d8d6d6;
+}
+
+.footer .about-container {
+    padding-left: 10%;
+}
+
+.footer .about-container .about-title {
+    font-size: 30px;
+    margin-bottom: 10px;
+}
+
+.footer .about-container .about-box {
+    margin-left: 10px;
+    display: flex;
+    align-items: center;
+}
+
+.git-btn {
+    background-color: black;
+    color: white;
+    width: 100px;
+    height: 30px;
+    border-radius: 3px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    margin-right: 20px;
+}
+
+.git-btn:hover {
+    cursor: pointer;
+    border-color: aqua;
+}
+
+.avatar {
+    height: 40px;
+    margin: 0 10px;
+    border-radius: 50%;
+}
+
+.avatar:hover {
+    cursor: pointer;
+}
