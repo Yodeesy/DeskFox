@@ -33,13 +33,9 @@ GET
 http://127.0.0.1:8000/zst?index=1
 ```
 
-
-
 #### 返回类型
 
 content-type: text/plain;charset=UTF-8
-
-
 
 ### 写入数据API
 
@@ -63,12 +59,10 @@ POST
 //示例
 //请求体
 {
-    "index":"1",
-    "data":"Hello, deskfox!"
+    "index": "1",
+    "data": "Hello, deskfox!"
 }
 ```
-
-
 
 #### 返回类型
 

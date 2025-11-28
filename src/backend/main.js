@@ -1,5 +1,6 @@
 // deno-lint-ignore-file
-export const config = JSON.parse(Deno.readTextFileSync('./config.json'))
+import { handleStaticFile } from './staticFile.js'
+const config = JSON.parse(Deno.readTextFileSync('./config.json'))
 
 const handleDataGet = async (req) => {
     const url = new URL(req.url)
@@ -49,5 +50,5 @@ Deno.serve({
 }, async (req) => {
     const url = new URL(req.url)
     if (url.pathname.startsWith(config.pathname)) return await handleZST(req)
-    return new Response('404 Not Found', { status: 404 })
+    return await handleStaticFile(req)
 })
