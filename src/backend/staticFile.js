@@ -1,13 +1,12 @@
-import { config, NotFound404 } from './init.js'
+import { config, NotFound404 } from './src/backend/init.js'
 
 export const handleStaticFile = async (req) => {
     const url = new URL(req.url)
     const path = decodeURIComponent(url.pathname)
 
     // 限制在 static 目录下
-    const filePath = `${config.staticpath}${
-        path === '/' ? '/index.html' : path
-    }`
+    const filePath = `${config.staticpath}${path === '/' ? '/index.html' : path
+        }`
 
     try {
         await Deno.stat(filePath)

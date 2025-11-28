@@ -27,7 +27,13 @@
     top: 0;
     /* transition: background 2s; */
     animation: spin 13s infinite ease;
-    background: conic-gradient(from 90deg, #FFD1DC, #C7CEEA, #A8DADC, rgba(220, 220, 220, 0.5));
+    background: conic-gradient(
+        from 90deg,
+        #ffd1dc,
+        #c7ceea,
+        #a8dadc,
+        rgba(220, 220, 220, 0.5)
+    );
 }
 
 @keyframes spin {
@@ -50,8 +56,9 @@
     background-clip: text;
 
     color: transparent;
-    text-shadow: 1px 1px 4px rgba(0, 0, 0, 0.3),
-            -1px -1px 4px rgba(255, 255, 255, 0.1);
+    text-shadow:
+        1px 1px 4px rgba(0, 0, 0, 0.3),
+        -1px -1px 4px rgba(255, 255, 255, 0.1);
     z-index: 100;
 }
 

@@ -1,6 +1,6 @@
 // deno-lint-ignore-file
-import { handleStaticFile } from './staticFile.js'
-const config = JSON.parse(Deno.readTextFileSync('./config.json'))
+import { handleStaticFile } from './src/backend/staticFile.js'
+const config = JSON.parse(Deno.readTextFileSync('./src/backend/config.json'))
 
 const handleDataGet = async (req) => {
     const url = new URL(req.url)

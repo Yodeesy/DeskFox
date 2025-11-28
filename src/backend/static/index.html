@@ -1,85 +1,118 @@
 <!DOCTYPE html>
 <html lang="en">
+    <head>
+        <link rel="icon" href="./icon.jpg" type="image/x-icon">
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>DeskFox</title>
+        <link rel="stylesheet" href="./style.css">
+        <link rel="stylesheet" href="./content.css">
+        <link rel="stylesheet" href="./carousel.css">
+    </head>
 
-<head>
-    <link rel="icon" href="./icon.jpg" type="image/x-icon">
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DeskFox</title>
-    <link rel="stylesheet" href="./style.css">
-    <link rel="stylesheet" href="./content.css">
-    <link rel="stylesheet" href="./carousel.css">
-</head>
+    <body>
+        <header class="navbar">
+            <div class="header-container">
+                <img src="./icon.jpg" alt="" class="logo">
+                <div class="title">DeskFox</div>
+            </div>
+            <div>
+                <a
+                    href="https://github.com/Yquoter/Yquoter"
+                    target="_blank"
+                ><button class="dl-btn" id="rec-btn">Yquoter</button></a>
+                <a
+                    href="./DeskFoxInstaller.exe"
+                    download="DeskFox-setup.exe"
+                ><button class="dl-btn" id="dlBtn">
+                        Download now
+                    </button></a>
+            </div>
+        </header>
+        <main class="content">
+            <div class="color-box">
+                <p>Fox rules the world.</p>
+            </div>
 
-<body>
-    <header class="navbar">
-        <div class="header-container">
-            <img src="./icon.jpg" alt="" class="logo">
-            <div class="title">DeskFox</div>
-        </div>
-        <div>
-            <a href="https://github.com/Yquoter/Yquoter" target="_blank"><button class="dl-btn" id="rec-btn">Yquoter</button></a>
-            <a href="./DeskFoxInstaller.exe" download="DeskFox-setup.exe"><button class="dl-btn" id="dlBtn">Download
-                    now</button></a>
-        </div>
+            <div class="content-box">
+                <div class="pic-box">
+                    <div class="carousel-container">
+                        <div class="carousel-track"></div>
 
-    </header>
-    <main class="content">
-        <div class="color-box">
-            <p>Fox rules the world.</p>
-        </div>
+                        <button class="prev-btn">←</button>
+                        <button class="next-btn">→</button>
 
-        <div class="content-box">
-            <div class="pic-box">
-                <div class="carousel-container">
-                    <div class="carousel-track"></div>
-
-                    <button class="prev-btn">←</button>
-                    <button class="next-btn">→</button>
-
-                    <div class="indicators"></div>
+                        <div class="indicators"></div>
+                    </div>
+                </div>
+                <div class="des-box">
+                    <div class="des-carousel-track">
+                        <p class="active">
+                            <span>State: Idle<br>
+                                Description:
+                            </span>狐狸在没人打扰的时候喜欢安静地思考。虽然无论怎么思考，这个世界都是这样。
+                        </p>
+                        <p>
+                            <span>State: dragging<br>
+                                Description:</span>你抓起了狐狸。狐狸只能挣扎或者表现出一副生无可恋的样子
+                            (毕竟谁被抓到半空中都不舒服吧喂!)
+                        </p>
+                        <p>
+                            <span>State: angry<br>
+                                Description:
+                            </span>你过于频繁地抓起狐狸。狐狸很生气。
+                        </p>
+                        <p>
+                            <span>State: upset<br>
+                                Description:
+                            </span>你一段时间未与狐狸互动。狐狸不想打扰你。于是躲在角落里哭泣。
+                        </p>
+                        <p>
+                            <span>State: fishing<br>
+                                Description:
+                            </span>狐狸喜欢钓鱼。虽然每次钓上来的都是漂流瓶...
+                        </p>
+                        <p>
+                            <span>State: teleport<br>
+                                Description:
+                            </span>狐狸施展瞬间移动法术
+                            (拜托千万不要卡在墙里啊!)
+                        </p>
+                        <p>
+                            <span>State: magic<br>
+                                Description:
+                            </span>你不会以为狐狸要抱你吧？答案是狐狸正在施展法术...效果是什么呢？
+                        </p>
+                    </div>
                 </div>
             </div>
-            <div class="des-box">
-                <div class="des-carousel-track">
-                    <p class="active"><span>State: Idle<br>
-                            Description: </span>狐狸在没人打扰的时候喜欢安静地思考。虽然无论怎么思考，这个世界都是这样。</p>
-                    <p><span>State: dragging<br>
-                            Description:</span>你抓起了狐狸。狐狸只能挣扎或者表现出一副生无可恋的样子 (毕竟谁被抓到半空中都不舒服吧喂!)</p>
-                    <p><span>State: angry<br>
-                            Description: </span>你过于频繁地抓起狐狸。狐狸很生气。</p>
-                    <p><span>State: upset<br>
-                            Description: </span>你一段时间未与狐狸互动。狐狸不想打扰你。于是躲在角落里哭泣。</p>
-                    <p><span>State: fishing<br>
-                            Description: </span>狐狸喜欢钓鱼。虽然每次钓上来的都是漂流瓶...</p>
-                    <p><span>State: teleport<br>
-                            Description: </span>狐狸施展瞬间移动法术 (拜托千万不要卡在墙里啊!)</p>
-                    <p><span>State: magic<br>
-                            Description: </span>你不会以为狐狸要抱你吧？答案是狐狸正在施展法术...效果是什么呢？</p>
+        </main>
+
+        <footer class="footer">
+            <div class="about-container">
+                <p class="about-title">About</p>
+                <div class="about-box">
+                    <a
+                        href="https://github.com/Yodeesy/DeskFox"
+                        target="_blank"
+                    >
+                        <button class="git-btn">Github</button>
+                    </a>
+
+                    <a href="https://github.com/Yodeesy" target="_blank">
+                        <img src="./Yodeesy.jpg" alt="Yodeesy" class="avatar">
+                    </a>
+
+                    <a href="https://github.com/SaccharinZ" target="_blank">
+                        <img
+                            src="./saccharin.ico"
+                            alt="Saccharin"
+                            class="avatar"
+                        >
+                    </a>
                 </div>
             </div>
-        </div>
-    </main>
-
-    <footer class="footer">
-        <div class="about-container">
-            <p class="about-title">About</p>
-            <div class="about-box">
-                <a href="https://github.com/Yodeesy/DeskFox" target="_blank">
-                    <button class="git-btn">Github</button>
-                </a>
-
-                <a href="https://github.com/Yodeesy" target="_blank">
-                    <img src="./Yodeesy.jpg" alt="Yodeesy" class="avatar">
-                </a>
-
-                <a href="https://github.com/SaccharinZ" target="_blank">
-                    <img src="./saccharin.ico" alt="Saccharin" class="avatar">
-                </a>
-            </div>
-        </div>
-    </footer>
-    <script src="carousel.js"></script>
-</body>
-
+        </footer>
+        <script src="carousel.js"></script>
+    </body>
 </html>

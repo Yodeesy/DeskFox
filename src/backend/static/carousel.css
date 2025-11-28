@@ -29,21 +29,21 @@
     opacity: 1;
 }
 
-.des-carousel-track{
+.des-carousel-track {
     position: relative;
     height: 100%;
 }
-.des-carousel-track p span{
+.des-carousel-track p span {
     font-size: 30px;
     margin-bottom: 10px;
 }
-.des-carousel-track p{
+.des-carousel-track p {
     margin: 0;
     padding: 0;
     position: absolute;
     top: 50%;
     left: 50%;
-    transform: translate(-50%,-50%);
+    transform: translate(-50%, -50%);
     /* height: 100%; */
     width: 80%;
     opacity: 0;
@@ -52,12 +52,10 @@
     font-size: 20px;
 }
 
-.des-carousel-track p.active{
+.des-carousel-track p.active {
     opacity: 1;
     z-index: 10;
 }
-
-
 
 /* 切换按钮样式 */
 .prev-btn,

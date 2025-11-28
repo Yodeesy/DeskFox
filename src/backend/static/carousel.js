@@ -32,9 +32,9 @@ init()
 // 切换图片函数
 function switchImg(index) {
     // 移除所有active类
-    imgs.forEach(img => img.classList.remove('active'))
-    indicators.forEach(ind => ind.classList.remove('active'))
-    descriptions.forEach(des => des.classList.remove('active'))
+    imgs.forEach((img) => img.classList.remove('active'))
+    indicators.forEach((ind) => ind.classList.remove('active'))
+    descriptions.forEach((des) => des.classList.remove('active'))
     // 添加当前active类
     imgs[index].classList.add('active')
     indicators[index].classList.add('active')
