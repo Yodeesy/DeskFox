@@ -1,0 +1,10 @@
+{
+    "rest_interval_minutes": 45,
+    "rest_duration_seconds": 30,
+    "fishing_cooldown_minutes": 10,
+    "fishing_success_rate": 0.64,
+    "upset_interval_minutes": 7,
+    "angry_possibility": 0.54,
+    "current_x": 100,
+    "current_y": 100
+}

@@ -1,20 +1,21 @@
 # settings_gui.py
 
 import pygame
-from config_manager import save_config
-from pet_states import DisplayState, IdleState
+from src.app.config_manager import save_config
+from src.app.pet_states import DisplayState, IdleState, ByeState
 import customtkinter as ctk
 from tkinter import messagebox
 import os
 import sys
 import winreg
 import ctypes
+import webbrowser
 
-# DWM Effect Constants (for Acrylic/Mica effect)
-# DWM_EC_DISABLE = 0
-# DWM_EC_ENABLE_GRADIENT = 1
-# DWM_EC_ENABLE_TRANSPARENT = 2
+# DWM Effect Constants (for Acrylic effect)
 DWM_EC_ENABLE_ACRYLIC = 3  # Acrylic effect (Win 10/11)
+WCA_ACCENT_POLICY = 19
+DWMWA_USE_IMMERSIVE_DARK_MODE = 20
+
 
 # Set theme and appearance
 ctk.set_appearance_mode("System")  # Supports 'Light', 'Dark', 'System'
@@ -33,8 +34,8 @@ class SettingsWindow(ctk.CTkToplevel):
         self.title("Desktop Pet Settings")
 
         # Initial dimensions
-        self.gui_width = 449
-        self.gui_height = 534
+        self.gui_width = 479
+        self.gui_height = 574
         self.geometry(f"{self.gui_width}x{self.gui_height}")
 
         self.resizable(False, False)
@@ -118,18 +119,34 @@ class SettingsWindow(ctk.CTkToplevel):
         self.main_frame = ctk.CTkFrame(self)
         self.main_frame.pack(fill="both", expand=True, padx=10, pady=10)
 
+        # --- 0. GitHub Link  ---
+        link_label = ctk.CTkLabel(
+            self.main_frame,
+            text="More info? 🔜 GitHub",
+            text_color="#3498db",
+            font=ctk.CTkFont(underline=True, size=14, weight="bold")
+        )
+        # 绑定左键点击事件
+        link_label.bind("<Button-1>", self.open_github_link)
+        # 增加鼠标悬停手型
+        link_label.configure(cursor="hand2")
+        # 将其放置在顶部
+        link_label.grid(row=0, column=0, padx=5, pady=(5, 5), sticky="n")
+
         # --- 1. Autostart Setting ---
         autostart_check = ctk.CTkCheckBox(
             self.main_frame,
             text="Launch on Startup",
             variable=self.autostart_var,
-            command=self.toggle_autostart
+            command=self.toggle_autostart,
+            text_color="#D4D4D4",
+            font=ctk.CTkFont(weight="bold")
         )
-        autostart_check.grid(row=0, column=0, padx=5, pady=5, sticky="w")
+        autostart_check.grid(row=1, column=0, padx=5, pady=5, sticky="ew")
 
         # --- 2. Eye Rest Reminder Area ---
         rest_frame = ctk.CTkFrame(self.main_frame)
-        rest_frame.grid(row=1, column=0, padx=5, pady=10, sticky="ew")
+        rest_frame.grid(row=2, column=0, padx=5, pady=10, sticky="ew")
 
         # Area Title
         ctk.CTkLabel(
@@ -159,7 +176,7 @@ class SettingsWindow(ctk.CTkToplevel):
             fg_color="#e74c3c",  # Dark red background
             hover_color="#c0392b"
         )
-        exit_button.grid(row=2, column=0, padx=5, pady=10, sticky="ew")
+        exit_button.grid(row=3, column=0, padx=5, pady=10, sticky="ew")
 
     def save_rest_settings(self):
         """Validates input, saves rest settings, updates the pet, and saves config to file."""
@@ -208,6 +225,11 @@ class SettingsWindow(ctk.CTkToplevel):
         except Exception as e:
             messagebox.showerror("Error", f"An unexpected error occurred: {e}", parent=self)
 
+    def open_github_link(self, event=None):
+        """Link to GitHub repo."""
+        github_url = "https://github.com/Yodeesy/DeskFox.git"
+        webbrowser.open_new_tab(github_url)
+
     def apply_acrylic_effect(self):
         """Attempts to apply Windows 10/11 Acrylic or Mica blur effect."""
 
@@ -217,48 +239,77 @@ class SettingsWindow(ctk.CTkToplevel):
         # 2. Attempt transparent color key method for CustomTkinter
         try:
             # Use magenta as the transparent color key
-            self.wm_attributes("-transparentcolor", "#FF00FF")
+            self.wm_attributes("-transparentcolor", "")
 
-            # Ensure CTkToplevel's background is set to the key color
-            self.configure(fg_color="#FF00FF")
             if hasattr(self, 'main_frame'):
-                self.main_frame.configure(fg_color="#FF00FF")
+                self.main_frame.configure(fg_color="transparent")
+
+            self.configure(fg_color='transparent')
+            self.overrideredirect(True)
 
         except Exception:
             pass  # Ignore failure if transparent color is not supported
+
+        # Define ACCENT_POLICY structure
+        # 结构 A: MARGINS 用于 DwmExtendFrameIntoClientArea
+        class MARGINS(ctypes.Structure):
+            _fields_ = [
+                ("cxLeftWidth", ctypes.c_int), ("cxRightWidth", ctypes.c_int),
+                ("cyTopHeight", ctypes.c_int), ("cyBottomHeight", ctypes.c_int),
+            ]
+
+        # 结构 B: ACCENT_POLICY 用于 SetWindowCompositionAttribute
+        class ACCENT_POLICY(ctypes.Structure):
+            _fields_ = [
+                ("AccentState", ctypes.c_int),
+                ("AccentFlags", ctypes.c_int),
+                ("GradientColor", ctypes.c_int),
+                ("AnimationId", ctypes.c_int)
+            ]
+
+        # 结构 C: WINDOWCOMPOSITIONATTRIBDATA
+        class WINDOWCOMPOSITIONATTRIBDATA(ctypes.Structure):
+            _fields_ = [
+                ("Attribute", ctypes.c_int),
+                ("Data", ctypes.POINTER(ACCENT_POLICY)),
+                ("SizeOfData", ctypes.c_size_t)
+            ]
 
         # 3. DWM API call (applying Acrylic effect)
         try:
             hwnd = ctypes.windll.user32.GetParent(self.winfo_id())
 
-            accent_policy = DWM_EC_ENABLE_ACRYLIC  # 3
+            # --- A. 强制 DWM 渲染接管整个客户区 ---
+            margins = MARGINS(-1, -1, -1, -1)
+            ctypes.windll.dwmapi.DwmExtendFrameIntoClientArea(
+                hwnd, ctypes.byref(margins)
+            )
 
-            # Define ACCENT_POLICY structure
-            class ACCENT_POLICY(ctypes.Structure):
-                _fields_ = [
-                    ("AccentState", ctypes.c_int),
-                    ("AccentFlags", ctypes.c_int),
-                    ("GradientColor", ctypes.c_int),
-                    ("AnimationId", ctypes.c_int)
-                ]
-
-            # Define WINDOWCOMPOSITIONATTRIBDATA structure
-            class WINDOWCOMPOSITIONATTRIBDATA(ctypes.Structure):
-                _fields_ = [
-                    ("Attribute", ctypes.c_int),
-                    ("Data", ctypes.POINTER(ACCENT_POLICY)),
-                    ("SizeOfData", ctypes.c_size_t)
-                ]
+            # --- B. 应用亚克力样式 ---
 
             policy = ACCENT_POLICY()
-            policy.AccentState = accent_policy
+            policy.AccentState = DWM_EC_ENABLE_ACRYLIC  # 亚克力
+            policy.AccentFlags = 0
+            # GradientColor = AARRGGBB (Alpha, Red, Green, Blue)
+            # 0x01FFFFFF 是浅色（白色）带极低透明度，效果更自然。
+            policy.GradientColor = 0x01FFFFFF
 
             wca_data = WINDOWCOMPOSITIONATTRIBDATA()
-            wca_data.Attribute = 19  # WCA_ACCENT_POLICY
+            wca_data.Attribute = WCA_ACCENT_POLICY
             wca_data.SizeOfData = ctypes.sizeof(policy)
             wca_data.Data = ctypes.pointer(policy)
 
             ctypes.windll.user32.SetWindowCompositionAttribute(hwnd, wca_data)
+
+            # --- C. 设置深色模式（让亚克力效果更现代）---
+            try:
+                dark_mode = ctypes.c_int(1)
+                ctypes.windll.dwmapi.DwmSetWindowAttribute(
+                    hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE,
+                    ctypes.byref(dark_mode), ctypes.sizeof(ctypes.c_int)
+                )
+            except Exception:
+                pass  # 忽略旧版系统不支持此属性的错误
 
         except Exception:
             # DWM API call failed (e.g., non-Windows OS, old Windows version)
@@ -341,9 +392,9 @@ class SettingsWindow(ctk.CTkToplevel):
     def confirm_exit(self):
         """Prompts user for confirmation and initiates application exit."""
         if messagebox.askyesno("Confirm Exit", "Are you sure you want to exit the desktop pet program?", parent=self):
-            self.pet.running = False  # Set the main loop exit flag
-            self.pet.tk_root.quit()  # Quit the Tkinter main loop
             self.destroy()  # Close the settings window
+            # change state to say bye
+            self.pet.change_state(ByeState(self.pet))
 
     def close_window(self):
         """Closes the settings window and returns the pet to the Idle state if it was following."""
