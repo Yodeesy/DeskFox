@@ -3,8 +3,8 @@ A cute deskpet 狐狸 (DeskFox)
 
 ## 🌐 访问应用与介绍 (Access and Introduction)
 
-DeskFox 是一个桌面应用。下方链接指向的是**项目的介绍和宣传网站**，而非应用本身。
-DeskFox is a desktop application. The link below points to the **project's introduction and promotion website**, not the application itself.
+- DeskFox 是一个桌面应用。下方链接指向的是**项目的介绍和宣传网站**，而非应用本身。
+- DeskFox is a desktop application. The link below points to the **project's introduction and promotion website**, not the application itself.
 
 [🦊 桌面狐狸介绍网站 (DeskFox Introduction Site)](https://Yodeesy.github.io/DeskFox/src/backend/static/index.html)
 
@@ -14,6 +14,7 @@ DeskFox is a desktop application. The link below points to the **project's intro
 
 **DeskFox** 是一款**桌面应用 (Desktop Application)**，为您带来一只拥有独特故事背景的可爱桌宠。
 DeskFox is a **Desktop Application** designed to bring you a cute desk pet with a unique narrative background.
+目前僅支持 **Windows** 平台。
 
 在你的桌面上，这只穿着浅绿旧衣的狐狸（DeskFox）将陪伴你。它不仅仅是一个简单的宠物，更是承载着关于时间、孤独与记忆的温柔故事的化身。
 
