@@ -26,8 +26,8 @@
     left: 0;
     top: 0;
     /* transition: background 2s; */
-    animation: spin 20s infinite ease;
-    background: conic-gradient(red, yellow, lime, blue, magenta, red);
+    animation: spin 13s infinite ease;
+    background: conic-gradient(from 90deg, #FFD1DC, #C7CEEA, #A8DADC, rgba(220, 220, 220, 0.5));
 }
 
 @keyframes spin {
