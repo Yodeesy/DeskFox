@@ -59,9 +59,21 @@ class SettingsWindow(ctk.CTkToplevel):
         # Delay state change to DisplayState until the window is displayed
         self.after(200, lambda: self.pet.change_state(DisplayState(self.pet)))
 
+        # Ensure position is set before applying DWM effects
+        self.set_initial_position()
+
+        self.create_widgets()
         # Attempt to apply Windows acrylic effect
         self.after(100, self.apply_acrylic_effect)
-        self.create_widgets()
+
+        self._force_render_fix()
+
+    def _force_render_fix(self):
+        try:
+            self.update_idletasks()
+            self.update()  # 强制绘制所有 CTK 组件
+        except:
+            pass
 
     def on_gui_configure(self, event):
         """
@@ -69,7 +81,30 @@ class SettingsWindow(ctk.CTkToplevel):
         """
         # Only process events on the Toplevel window itself
         if event.widget == self:
-            # Check if the pet is in the DisplayState to ensure following logic is active
+            # 1. 獲取建議的新位置 (由操作系統報告)
+            new_x_proposed = event.x
+            new_y_proposed = event.y
+
+            screen_w = self.pet.full_screen_width
+            screen_h = self.pet.full_screen_height
+            win_w = self.gui_width
+            win_h = self.gui_height
+
+            # 2. 計算最大有效座標 (螢幕尺寸 - 窗口尺寸)
+            max_x = screen_w - win_w
+            max_y = screen_h - win_h
+
+            # 3. 約束座標：確保在 [0, 最大值] 範圍內
+            new_x_constrained = max(0, min(new_x_proposed, max_x))
+            new_y_constrained = max(0, min(new_y_proposed, max_y))
+
+            # 4. 如果建議位置超出約束，則強制彈回
+            if new_x_proposed != new_x_constrained or new_y_proposed != new_y_constrained:
+                # 使用 wm_geometry 立即移動窗口到有效位置
+                self.wm_geometry(f"+{int(new_x_constrained)}+{int(new_y_constrained)}")
+                return
+
+            # 5. 如果是有效移動，則執行寵物跟隨邏輯
             if self.pet.state.__class__.__name__ == 'DisplayState':
                 self.pet.update_display_follow()
 
@@ -83,8 +118,8 @@ class SettingsWindow(ctk.CTkToplevel):
         pet_w = self.pet.width
 
         # 2. Get screen dimensions
-        screen_modes = pygame.display.get_desktop_sizes()
-        screen_w, screen_h = screen_modes[0]
+        screen_w = self.pet.full_screen_width
+        screen_h = self.pet.full_screen_height
 
         # 3. Determine initial X coordinate (prefer placing to the right)
         gap = 10
@@ -218,14 +253,13 @@ class SettingsWindow(ctk.CTkToplevel):
                 raise ValueError("Input values must be positive integers.")
 
             # 3. Validate interval (minutes)
-            MIN_INTERVAL = 2
-            MAX_INTERVAL = 120
-            if not (MIN_INTERVAL <= interval <= MAX_INTERVAL):
-                raise ValueError(f"Rest interval must be between {MIN_INTERVAL} and {MAX_INTERVAL} minutes.")
+            MIN_INTERVAL = 30
+            if not (MIN_INTERVAL <= interval):
+                raise ValueError(f"Rest interval must be over {MIN_INTERVAL} minutes.")
 
             # 4. Validate duration (seconds)
-            MIN_DURATION = 15
-            MAX_DURATION = 300
+            MIN_DURATION = 10
+            MAX_DURATION = 60
             if not (MIN_DURATION <= duration <= MAX_DURATION):
                 raise ValueError(f"Rest duration must be between {MIN_DURATION} and {MAX_DURATION} seconds.")
 
@@ -258,11 +292,7 @@ class SettingsWindow(ctk.CTkToplevel):
 
     def apply_acrylic_effect(self):
         """Attempts to apply Windows 10/11 Acrylic or Mica blur effect."""
-
-        # 1. Ensure position is set before applying DWM effects
-        self.set_initial_position()
-
-        # 2. Attempt transparent color key method for CustomTkinter
+        # 1. Attempt transparent color key method for CustomTkinter
         try:
             # Use magenta as the transparent color key
             self.wm_attributes("-transparentcolor", "")
@@ -301,7 +331,7 @@ class SettingsWindow(ctk.CTkToplevel):
                 ("SizeOfData", ctypes.c_size_t)
             ]
 
-        # 3. DWM API call (applying Acrylic effect)
+        # 2. DWM API call (applying Acrylic effect)
         try:
             hwnd = ctypes.windll.user32.GetParent(self.winfo_id())
 

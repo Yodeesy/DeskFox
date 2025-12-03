@@ -233,6 +233,7 @@ class DesktopPet:
             while True:
                 # 使用 get_nowait() 進行非阻塞獲取
                 item = self._tk_queue.get_nowait()
+                print(f"DEBUG: Got item from queue: {item}", flush=True)
 
                 # item 結構: ("story_result", is_successful, payload, story_id)
                 if isinstance(item, tuple) and item[0] == "story_result":
@@ -253,6 +254,7 @@ class DesktopPet:
         finally:
             # 無論如何，都再次安排下一次輪詢
             if self.tk_root and self.tk_root.winfo_exists():
+                print("DEBUG: Scheduling next poll", flush=True)
                 self._poller_id = self.tk_root.after(100, self._process_queue)
             else:
                 print("WARNING: Tkinter root destroyed, stopping poller.", flush=True)

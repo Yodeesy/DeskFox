@@ -153,7 +153,7 @@ if __name__ == "__main__":
         # 3. Store tk_root in the pet instance for use by SettingsWindow and States
         pet.tk_root = tk_root
         # 启动轮询（主线程调用）
-        pet._start_queue_poller()
+        pet.tk_root.after(500, pet._start_queue_poller)
 
         # 4. Start the main application loop
         pet.run()

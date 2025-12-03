@@ -1,6 +1,4 @@
-# manager.py
-
-# pet_desktop.py (或 story_manager.py)
+# story_manager.py
 
 import requests
 import threading
