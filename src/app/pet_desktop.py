@@ -28,6 +28,7 @@ class DesktopPet:
         # --- Configuration Initialization ---
         self.config = initial_config
         self.animation_config = animation_config
+        self.persistent_keys = None
         self.rest_interval_ms = self.config.get("rest_interval_minutes", 60) * 60 * 1000
         self.rest_duration_ms = self.config.get("rest_duration_seconds", 30) * 1000
         self.fishing_cooldown_ms = self.config.get("fishing_cooldown_minutes", 10) * 60 * 1000

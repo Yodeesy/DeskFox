@@ -1,12 +1,7 @@
 {
-    "rest_interval_minutes": 30,
-    "rest_duration_seconds": 30,
-    "current_x": 999,
-    "current_y": 999,
     "web_service_url": "https://deskfox.deno.dev",
     "pathname": "/stories",
     "max_fox_story_num": 7,
-    "last_read_index": 0,
     "fox_story_possibility": 0.61,
     "fishing_cooldown_minutes": 10,
     "fishing_success_rate": 0.6489,

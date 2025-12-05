@@ -25,7 +25,6 @@ def load_frames_from_sheet(filepath, frame_w, frame_h, target_w, target_h, targe
     frames = []
     frame_w = math.ceil(frame_w)
     frame_h = math.ceil(frame_h)
-
     try:
         sprite_sheet = pygame.image.load(absolute_path).convert_alpha()
 

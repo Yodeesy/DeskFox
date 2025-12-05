@@ -124,7 +124,7 @@ def show_story_prompt(master, content: Union[str, Dict], story_id: int = None, p
                 f"迷途的旅人哟，狐狸钓到了一个漂流瓶！\n你想要打开看看吗？",
                 parent=master
             ):
-                save_config(master.config)
+                save_config(master.config, pet_instance.persistent_keys)
                 return StoryDisplayWindow(master, content, story_id, pet_instance)
 
         else:

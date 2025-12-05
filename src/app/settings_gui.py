@@ -271,7 +271,7 @@ class SettingsWindow(ctk.CTkToplevel):
             self.pet.update_rest_config(interval * 60 * 1000, duration * 1000)
 
             # Save configuration to file
-            save_config(self.master.config)
+            save_config(self.master.config, self.pet.persistent_keys)
 
             messagebox.showinfo("Settings Saved", "Eye rest reminder settings have been saved!", parent=self)
 

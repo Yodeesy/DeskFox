@@ -2,9 +2,11 @@
 
 import customtkinter as ctk
 import tkinter as tk
-from config_manager import load_config
+from config_manager import DEFAULT_CONFIG_FILE_NAME, PERSISTENT_CONFIG_KEYS, load_config
+from utils import resource_path
 from pet_desktop import DesktopPet
 import sys
+import json
 
 # --- Initialization and Configuration ---
 
@@ -121,25 +123,36 @@ ANIMATION_CONFIG = {
     }
 }
 
+try:
+    default_path = resource_path(DEFAULT_CONFIG_FILE_NAME)
+    with open(default_path, 'r', encoding='utf-8') as f:
+        DEFAULT_SETTINGS = json.load(f)
+except Exception:
+    DEFAULT_SETTINGS = {
+        "web_service_url": "https://deskfox.deno.dev",
+        "pathname": "/stories",
+        "max_fox_story_num": 7,
+        "fox_story_possibility": 0.61,
+        "fishing_cooldown_minutes": 10,
+        "fishing_success_rate": 0.6489,
+        "upset_interval_minutes": 7,
+        "angry_possibility": 0.54
+    }
+
 # Default configuration used if the config file does not exist
 DEFAULT_CONFIG = {
     "rest_interval_minutes": 30,
     "rest_duration_seconds": 30,
     "current_x": 100,
     "current_y": 100,
-    "web_service_url": "https://deskfox.deno.dev",
-    "pathname": "/zst",
-    "max_fox_story_num": 7,
     "last_read_index": 0,
-    "fox_story_possibility": 0.61,
-    "fishing_cooldown_minutes": 10,
-    "fishing_success_rate": 0.6489,
-    "upset_interval_minutes": 7,
-    "angry_possibility": 0.54
 }
 
+FULL_DEFAULT_CONFIG = DEFAULT_SETTINGS.copy() # 包含 pet_config.json 的业务参数
+FULL_DEFAULT_CONFIG.update(DEFAULT_CONFIG)    # 添加/更新硬编码的状态参数
+
 # Load application configuration at startup
-app_config = load_config(DEFAULT_CONFIG)
+app_config = load_config(FULL_DEFAULT_CONFIG)
 
 if __name__ == "__main__":
     try:
@@ -156,6 +169,9 @@ if __name__ == "__main__":
             animation_config=ANIMATION_CONFIG,
             initial_config=app_config
         )
+
+        # 将持久化键列表传递给 Pet 实例
+        pet.persistent_keys = PERSISTENT_CONFIG_KEYS
 
         # 3. Store tk_root in the pet instance for use by SettingsWindow and States
         pet.tk_root = tk_root

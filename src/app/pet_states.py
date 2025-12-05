@@ -206,7 +206,7 @@ class DraggingState(PetState):
 
             self.pet.tk_root.config["current_x"] = final_x
             self.pet.tk_root.config["current_y"] = final_y
-            save_config(self.pet.tk_root.config)
+            save_config(self.pet.tk_root.config, self.pet.persistent_keys)
 
         except Exception:
             # Safety fallback: switch back to IdleState on error (e.g., if Pygame window is missing)
