@@ -1,0 +1,44 @@
+.decorate-box {
+    position: relative;
+    height: 650px;
+    width: 100px;
+    /* background: linear-gradient(red, green, skyblue); */
+    overflow: hidden;
+}
+/* 
+.decorate {
+    height: 1300px;
+    width: 200px;
+    background: linear-gradient(rgb(132, 199, 253),
+            rgb(75, 118, 235),
+            rgb(160, 83, 249),
+            rgb(247, 108, 203),
+            rgb(234, 90, 136),
+            rgb(242, 210, 84),
+            rgb(142, 252, 118),
+            rgb(132, 199, 253));
+    animation: dec 10s linear infinite;
+} */
+
+.rain {
+    position: absolute;
+    width: 2px;
+    /* 雨滴宽度 */
+    background: linear-gradient(to bottom, transparent, currentColor);
+    /* 雨滴渐变（上透明下实色） */
+    opacity: 0.8;
+}
+
+/* @keyframes dec {
+    0% {
+        transform: translate(0, 0)
+    }
+
+    50% {
+        transform: translate(0, -50%);
+    }
+
+    100% {
+        transform: translate(0, 0);
+    }
+} */

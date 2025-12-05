@@ -27,13 +27,11 @@
     top: 0;
     /* transition: background 2s; */
     animation: spin 13s infinite ease;
-    background: conic-gradient(
-        from 90deg,
-        #ffd1dc,
-        #c7ceea,
-        #a8dadc,
-        rgba(220, 220, 220, 0.5)
-    );
+    background: conic-gradient(from 90deg,
+            #ffd1dc,
+            #c7ceea,
+            #a8dadc,
+            rgba(220, 220, 220, 0.5));
 }
 
 @keyframes spin {
@@ -47,11 +45,9 @@
 }
 
 .color-box p {
-    background: linear-gradient(
-        to right,
-        #fdf6db,
-        #faffdb
-    );
+    background: linear-gradient(to right,
+            #fdf6db,
+            #faffdb);
     -webkit-background-clip: text;
     background-clip: text;
 
@@ -64,28 +60,95 @@
 
 .content-box {
     width: 100%;
-    height: 600px;
+    /* height: 600px; */
     display: flex;
     align-items: center;
     justify-content: center;
     margin: 50px 0;
-    padding: 0 10%;
-    gap: 30px;
-    /* background: rgb(250, 109, 109); */
+    padding: 5% 10% 0;
+    /* gap: 30px; */
+    justify-content: space-between;
+
 }
 
 .pic-box {
-    height: 100%;
-    width: 600px;
+    height: 400px;
+    width: 400px;
     background-color: white;
-    border-radius: 30px;
     padding: 30px;
 }
 
 .des-box {
-    height: 70%;
-    width: 600px;
+    height: 250px;
+    width: 400px;
     background-color: rgb(165, 193, 224);
+    padding: 0 30px;
+}
+
+
+.display-box {
+    /* box-shadow: 0 0 10px 1px gray; */
+    border-radius: 30px;
+    overflow: hidden;
+    mask-image:
+        /* 1. 上边缘淡化：从上向下，10% 区域淡出 */
+        linear-gradient(to bottom, transparent, black 6%),
+
+        /* 2. 下边缘淡化：从下向上，10% 区域淡出 */
+        linear-gradient(to top, transparent, black 6%),
+
+        /* 3. 左边缘淡化：从左向右，10% 区域淡出 */
+        linear-gradient(to right, transparent, black 6%),
+
+        /* 4. 右边缘淡化：从右向左，10% 区域淡出 */
+        linear-gradient(to left, transparent, black 6%);
+
+    /* 必须设置 mask-composite 或 -webkit-mask-composite 属性
+           将这四个渐变叠加，并取它们的交集 (source-in 或 intersect) */
+    -webkit-mask-composite: intersect;
+    mask-composite: intersect;
+}
+
+
+.notice-box {
+    height: 650px;
+    width: 550px;
+    background: #faffdb;
+    /* box-shadow: 0 0 10px 2px #f8fecb, 0 0 10px 3px aliceblue; */
     border-radius: 30px;
     padding: 30px;
+
+    mask-image:
+        /* 1. 上边缘淡化：从上向下，10% 区域淡出 */
+        linear-gradient(to bottom, transparent, black 6%),
+
+        /* 2. 下边缘淡化：从下向上，10% 区域淡出 */
+        linear-gradient(to top, transparent, black 6%),
+
+        /* 3. 左边缘淡化：从左向右，10% 区域淡出 */
+        linear-gradient(to right, transparent, black 6%),
+
+        /* 4. 右边缘淡化：从右向左，10% 区域淡出 */
+        linear-gradient(to left, transparent, black 6%);
+
+    /* 必须设置 mask-composite 或 -webkit-mask-composite 属性
+           将这四个渐变叠加，并取它们的交集 (source-in 或 intersect) */
+    -webkit-mask-composite: intersect;
+    mask-composite: intersect;
+}
+
+.notice-box h3 {
+    height: 80px;
+    line-height: 80px;
+    text-align: center;
+    font-size: 50px;
+}
+
+.notice-box p {
+    position: relative;
+    height: 100%;
+    width: 100%;
+    font-size: 26px;
+    text-align: center;
+    padding: 30px 0;
 }
