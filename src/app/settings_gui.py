@@ -8,6 +8,8 @@ from tkinter import messagebox
 import os
 import sys
 import winreg
+import win32con
+import win32gui
 import ctypes
 import webbrowser
 
@@ -458,9 +460,6 @@ class SettingsWindow(ctk.CTkToplevel):
 
         if self.pet.state.__class__.__name__ == 'DisplayState':
             self.pet.change_state(IdleState(self.pet))
-
-        import win32con
-        import win32gui
 
         try:
             win32gui.SetWindowPos(

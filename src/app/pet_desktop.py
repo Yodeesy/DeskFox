@@ -5,6 +5,7 @@ import sys
 import win32con
 import win32gui
 import queue
+import time
 from typing import Union, Dict
 # Import created modules
 import window_manager as wm
@@ -85,6 +86,7 @@ class DesktopPet:
         # Configure layered window style
         try:
             wm.setup_layered_window(self.hwnd, self.width, self.height, start_x, start_y)
+            time.sleep(0.1)
         except Exception as e:
             # Handle window configuration failure, often harmless in initial Pygame setup
             pass
