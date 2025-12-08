@@ -13,7 +13,7 @@ app.use(express.static(staticDir))
 
 
 
-const port = 8080
+const port = 3000
 app.listen(port, () => {
     console.log(`server is running at http://localhost:${port}`)
 })
