@@ -9,3 +9,5 @@
 .idea
 
 DeskFox.spec
+
+/src/backend_cloudbase/node_modules

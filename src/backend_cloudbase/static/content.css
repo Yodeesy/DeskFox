@@ -1,0 +1,252 @@
+/* ---------------------------------------------------- */
+/* 1. 全局重置
+/* ---------------------------------------------------- */
+* {
+    box-sizing: border-box;
+    padding: 0;
+    margin: 0;
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+/* 引入更现代、跨平台的字体栈 */
+:root {
+    --primary-font-stack: 'Inter', 'SF Pro Display', 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, 'Noto Sans SC', sans-serif;
+    --secondary-font-stack: 'Georgia', 'SimSun', 'Songti SC', serif;
+}
+
+/* ---------------------------------------------------- */
+/* 2. Color Box (按要求保持不变) */
+/* ---------------------------------------------------- */
+.color-box {
+    height: 250px;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 100px;
+    position: relative;
+    background: transparent;
+}
+
+.color-box::after {
+    content: '';
+    filter: blur(50px);
+    position: absolute;
+    height: 250px;
+    width: 100%;
+    left: 0;
+    top: 0;
+    /* transition: background 2s; */
+    animation: spin 13s infinite ease;
+    background: conic-gradient(from 90deg,
+            #ffd1dc,
+            #c7ceea,
+            #a8dadc,
+            rgba(220, 220, 220, 0.5));
+}
+
+@keyframes spin {
+    0% {
+        filter: blur(50px) hue-rotate(0deg);
+    }
+
+    100% {
+        filter: blur(50px) hue-rotate(360deg);
+    }
+}
+
+.color-box p {
+    background: linear-gradient(to right,
+            #fdf6db,
+            #faffdb);
+    -webkit-background-clip: text;
+    background-clip: text;
+
+    color: transparent;
+    text-shadow:
+        1px 1px 4px rgba(0, 0, 0, 0.3),
+        -1px -1px 4px rgba(255, 255, 255, 0.1);
+    z-index: 100;
+}
+
+/* ---------------------------------------------------- */
+/* 3. Content Box & Display (核心布局修改) */
+/* ---------------------------------------------------- */
+.content-box {
+    width: 100%;
+    /* ⭐ 启用 Flexbox，实现三列并排 */
+    display: flex;
+    align-items: flex-start; /* 顶部对齐 */
+    margin: 50px 0;
+    padding: 5% 10% 0;
+    gap: 30px;
+    justify-content: space-between;
+}
+
+/* ---------------------------------------------------- */
+/* 3.1 左侧展示区域 */
+/* ---------------------------------------------------- */
+.display-box {
+    /* 调整 .display-box 的布局，使其内部的 pic-box 和 des-box 垂直堆叠 */
+    display: flex;
+    flex-direction: column;
+    gap: 15px; /* 图片和描述框之间的间距 */
+    width: 460px; /* ⭐ 确保左侧区域总宽度固定 */
+    flex-shrink: 0;
+
+    border-radius: 30px;
+    overflow: hidden;
+
+    mask-image:
+        linear-gradient(to bottom, transparent, black 6%),
+        linear-gradient(to top, transparent, black 6%),
+        linear-gradient(to right, transparent, black 6%),
+        linear-gradient(to left, transparent, black 6%);
+    -webkit-mask-composite: intersect;
+    mask-composite: intersect;
+}
+
+.pic-box {
+    height: 400px;
+    width: 100%; /* 占满 display-box 的宽度 */
+    background-color: #f7f7f7;
+    padding: 30px;
+    flex-shrink: 0;
+}
+
+.des-box {
+    height: 250px;
+    width: 100%; /* 占满 display-box 的宽度 */
+    background-color: #a5c3e0;
+    padding: 0 30px;
+    flex-shrink: 0;
+    border-radius: 15px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* ---------------------------------------------------- */
+/* 3.2 中间装饰区域 (用于局部波纹) */
+/* ---------------------------------------------------- */
+.decorate-box {
+    /*  关键修改：强制固定尺寸和相对定位 */
+    position: relative; /* 波纹元素定位基准 */
+    width: 300px; /* 设定宽度 */
+    height: 665px; /* 调整高度以匹配 .display-box 的总高度 (400 + 250 + 15 间距) */
+    overflow: hidden; /* 裁剪波纹 */
+    flex-shrink: 0;
+}
+
+/* ---------------------------------------------------- */
+/* 4. Notice Box (尺寸修改以适应布局) */
+/* ---------------------------------------------------- */
+.notice-box {
+    /*  调整高度，使其与 display-box 总高度一致 */
+    height: 665px;
+    width: 570px; /* ⭐ 设定宽度 */
+    flex-shrink: 0; /* 防止被挤压 */
+
+    background: #b8d98d;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    border-radius: 30px;
+    padding: 30px;
+    display: flex;
+    flex-direction: column;
+
+    mask-image:
+        linear-gradient(to bottom, transparent, black 6%),
+        linear-gradient(to top, transparent, black 6%),
+        linear-gradient(to right, transparent, black 6%),
+        linear-gradient(to left, transparent, black 6%);
+
+    -webkit-mask-composite: intersect;
+    mask-composite: intersect;
+    transform-style: preserve-3d;
+}
+
+.notice-box h3 {
+    height: 90px;
+    line-height: 80px;
+    text-align: center;
+    font-family: var(--primary-font-stack);
+    font-size: 45px;
+    font-weight: 600;
+    color: #333;
+}
+
+.notice-box p {
+    position: relative;
+    font-family: var(--secondary-font-stack);
+    font-size: 19px;
+    line-height: 1.6;
+    text-align: left;
+    padding: 10px 0;
+    color: #555;
+    /* ⭐ 允许内容区域填满可用空间 */
+    flex-grow: 1;
+}
+
+/* ---------------------------------------------------- */
+/* 5. 最后一个子模块：联系模块 (保持不变) */
+/* ---------------------------------------------------- */
+.contact-module {
+    display: block;
+    margin-top: 9px;
+    padding: 15px 20px;
+    border-radius: 15px;
+
+    text-align: center;
+    text-decoration: none;
+    cursor: pointer;
+
+    background-color: #daf3bc;
+    color: #444;
+    font-family: var(--primary-font-stack);
+    font-size: 18px;
+    font-weight: 600;
+
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+
+    transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.contact-module:hover {
+    /* 悬停效果：3D 浮动和背景高亮 */
+    transform: perspective(1000px) translateY(-5px) rotateX(1deg);
+
+    background-color: #86bad5;
+    color: #354ecb;
+
+    box-shadow:
+        0 12px 25px rgba(202, 236, 118, 0.3),
+        0 5px 10px rgba(0, 0, 0, 0.15);
+}
+
+/* ---------------------------------------------------- */
+/* 6. 雨滴和波纹的局部样式 (应放在 content.css 或 rain.css) */
+/* ---------------------------------------------------- */
+
+/* 局部波纹基础样式 - 属于内容区域的装饰，保留在 content.css 中 */
+.ripple {
+    position: absolute; /* 必须是 absolute */
+    border-radius: 50%;
+    transform-origin: 50% 50%; /* 确保缩放以中心进行 */
+    transform: scale(0);
+    opacity: 0;
+    pointer-events: none;
+    transition: none;
+    /* 霓虹发光效果 */
+    box-shadow: 0 0 5px currentColor, 0 0 10px currentColor, 0 0 20px currentColor;
+}
+
+/* 波纹动画 */
+@keyframes ripple-spread {
+    0% {
+        transform: scale(0);
+        opacity: 1;
+    }
+    100% {
+        transform: scale(1.5);
+        opacity: 0;
+    }
+}

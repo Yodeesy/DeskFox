@@ -1,0 +1,217 @@
+/* ---------------------------------------------------- */
+/* 0. 根变量 (Root Variables) - 定义主题基础 */
+/* ---------------------------------------------------- */
+:root {
+    /* 颜色定义 */
+    /* 定义一个初始背景亮度值，作为动态切换的变量 */
+    --bg-color: 247;
+    --color-navbar-bg: #fff;         /* 导航栏背景色 */
+    --color-primary: #333;           /* 主要文本颜色 */
+    --color-secondary: #fff;         /* 次要/反转文本颜色 */
+    --color-background-light: #f4f7f9; /* 浅背景色 (代替 aliceblue) */
+    --color-background-dark: #d8d6d6;  /* Footer 背景色 */
+    --color-footer-bg: var(--color-background-dark);
+    --color-shadow-light: rgba(0, 0, 0, 0.1);   /* 白天标准阴影 */
+    --color-shadow-dark: rgba(255, 255, 255, 0.08); /* 夜晚柔和阴影 */
+    --color-shadow-dynamic: var(--color-shadow-light); /* 动态阴影变量 */
+    --color-btn-default: black;      /* 默认按钮背景色 */
+    --color-btn-rec: #4c8e75;        /* 推荐按钮背景色 */
+    --color-btn-text: var(--color-secondary); /* 按钮文本动态变量，默认白色 */
+
+    /* 字体定义 */
+    --font-family-primary: 'Inter', 'Segoe UI', 'Roboto', sans-serif;
+    --font-family-title: 'Consolas', monospace;
+
+    /* 尺寸定义 */
+    --navbar-height: 80px;
+    --spacing-xs: 5px;
+    --spacing-sm: 10px;
+    --spacing-md: 20px;
+}
+
+/* ---------------------------------------------------- */
+/* 1. 全局重置 (Global Reset) */
+/* ---------------------------------------------------- */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    /* 规范化：添加平滑过渡 */
+    transition: all 0.2s ease-in-out;
+}
+
+/* ---------------------------------------------------- */
+/* 2. 背景容器定义 (Background Container Definition) */
+/* ---------------------------------------------------- */
+/* 新增容器：用于容纳并控制背景色和整体布局 */
+.background-container {
+    /* 继承 body 的 padding-top，将内容推到导航栏下方 */
+    padding-top: var(--navbar-height);
+   /* 使用 JS 设置的 --bg-color 变量来控制 RGB 灰度值 */
+    background-color: rgb(var(--bg-color), var(--bg-color), var(--bg-color));
+    /* 增加平滑过渡，让颜色渐变不突兀 */
+    transition: background-color 2s ease-in-out;
+    min-height: 100vh; /* 确保容器占据整个视口高度 */
+    width: 100%;
+}
+
+body {
+    /* 规范化：移除 body 的 padding-top 和 background-color，将其移至 .background-container */
+    /* background-color: aliceblue; */
+    /* padding-top: 80px; */
+    font-family: var(--font-family-primary);
+    color: var(--color-primary);
+}
+
+/* ---------------------------------------------------- */
+/* 3. 导航栏 (Navbar) */
+/* ---------------------------------------------------- */
+.navbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 3%;
+    background-color: var(--color-navbar-bg);
+    box-shadow: 0 2px 5px var(--color-shadow-dynamic);
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 1000;
+    height: var(--navbar-height);
+    transition: background-color 1s ease-in-out, color 1s ease-in-out;
+}
+
+.navbar .header-container {
+    display: flex;
+    height: 100%;
+    align-items: center;
+}
+
+.navbar .header-container .logo {
+    height: 60px;
+    margin-right: var(--spacing-sm);
+}
+
+.navbar .header-container .title {
+    line-height: var(--navbar-height);
+    font-size: 40px;
+    color: var(--color-primary);
+    font-family: var(--font-family-title);
+    /* 规范化：使用 var() */
+}
+
+/* ---------------------------------------------------- */
+/* 4. 按钮样式 (Button Styles) */
+/* ---------------------------------------------------- */
+.navbar .dl-btn {
+    height: 50px;
+    width: 140px;
+    /* 规范化：使用 flex 或 line-height: 1 来居中，这里使用 padding/line-height 保持原意 */
+    line-height: 50px;
+    font-size: 16px;
+    background-color: var(--color-btn-default);
+    color: var(--color-btn-text);
+    border: none; /* 明确移除边框 */
+    border-radius: 6px;
+    cursor: pointer;
+    margin-right: var(--spacing-md);
+    padding: 0 15px; /* 确保文本不会太贴边 */
+}
+
+#rec-btn {
+    background-color: var(--color-btn-rec);
+}
+
+.navbar .dl-btn:hover {
+    /* 规范化：使用 scale3d 优化性能 */
+    transform: scale3d(1.05, 1.05, 1.05);
+}
+
+.git-btn {
+    background-color: var(--color-btn-default);
+    color: var(--color-btn-text);
+    width: 100px;
+    height: 30px;
+    border: none;
+    border-radius: 3px;
+    box-shadow: 0 2px 5px var(--color-shadow-dynamic);
+    margin-right: var(--spacing-md);
+    cursor: pointer;
+}
+
+.git-btn:hover {
+    border: 1px solid aqua; /* 规范化：使用边框或 outline */
+}
+
+/* ---------------------------------------------------- */
+/* 5. 内容主体 (Content Body) */
+/* ---------------------------------------------------- */
+.content {
+    width: 100%;
+    /* 规范化：移除冗余或注释掉的样式 */
+}
+/* ---------------------------------------------------- */
+/* 5.1 内容框容器布局 (Content Box Container Layout) */
+/* ---------------------------------------------------- */
+.content-box {
+    display: flex; /* ⭐ 启用 Flexbox，实现三列并排 */
+    justify-content: space-between; /* 在子元素之间创建空间 */
+    align-items: flex-start; /* 顶部对齐 */
+    gap: var(--spacing-md); /* 子元素之间的间距 */
+}
+
+/* ---------------------------------------------------- */
+/* 5.2 内部模块尺寸控制 */
+/* ---------------------------------------------------- */
+
+/* 确保 display-box 和 notice-box 都有明确的宽度 */
+.display-box {
+    width: 559px; /* ⭐ 假设左侧模块宽度 */
+    flex-shrink: 0; /* 防止被挤压 */
+}
+
+.notice-box {
+    width: 390px; /* ⭐ 假设右侧模块宽度 */
+    flex-shrink: 0;
+}
+
+/* ---------------------------------------------------- */
+/* 6. 底部 (Footer) */
+/* ---------------------------------------------------- */
+.footer {
+    width: 100%;
+    height: 130px;
+    box-shadow: 0 2px 5px var(--color-shadow-dynamic);
+    background-color: var(--color-footer-bg);
+    transition: background-color 1s ease-in-out;
+}
+
+.footer .about-container {
+    padding-left: 10%;
+    padding-top: var(--spacing-md); /* 规范化：添加顶部内边距 */
+}
+
+.footer .about-container .about-title {
+    font-size: 30px;
+    margin-bottom: var(--spacing-sm);
+}
+
+.footer .about-container .about-box {
+    margin-left: var(--spacing-sm);
+    display: flex;
+    align-items: center;
+}
+
+.avatar {
+    height: 40px;
+    margin: 0 var(--spacing-sm);
+    border-radius: 50%;
+    /* 规范化：移除冗余的 box-shadow，与其它头像保持一致 */
+}
+
+.avatar:hover {
+    cursor: pointer;
+    /* 规范化：添加视觉反馈 */
+    transform: scale(1.1);
+}
