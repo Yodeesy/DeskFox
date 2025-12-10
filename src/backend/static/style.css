@@ -5,17 +5,17 @@
     /* 颜色定义 */
     /* 定义一个初始背景亮度值，作为动态切换的变量 */
     --bg-color: 247;
-    --color-navbar-bg: #fff;         /* 导航栏背景色 */
-    --color-primary: #333;           /* 主要文本颜色 */
-    --color-secondary: #fff;         /* 次要/反转文本颜色 */
+    --color-navbar-bg: #fff; /* 导航栏背景色 */
+    --color-primary: #333; /* 主要文本颜色 */
+    --color-secondary: #fff; /* 次要/反转文本颜色 */
     --color-background-light: #f4f7f9; /* 浅背景色 (代替 aliceblue) */
-    --color-background-dark: #d8d6d6;  /* Footer 背景色 */
+    --color-background-dark: #d8d6d6; /* Footer 背景色 */
     --color-footer-bg: var(--color-background-dark);
-    --color-shadow-light: rgba(0, 0, 0, 0.1);   /* 白天标准阴影 */
+    --color-shadow-light: rgba(0, 0, 0, 0.1); /* 白天标准阴影 */
     --color-shadow-dark: rgba(255, 255, 255, 0.08); /* 夜晚柔和阴影 */
     --color-shadow-dynamic: var(--color-shadow-light); /* 动态阴影变量 */
-    --color-btn-default: black;      /* 默认按钮背景色 */
-    --color-btn-rec: #4c8e75;        /* 推荐按钮背景色 */
+    --color-btn-default: black; /* 默认按钮背景色 */
+    --color-btn-rec: #4c8e75; /* 推荐按钮背景色 */
     --color-btn-text: var(--color-secondary); /* 按钮文本动态变量，默认白色 */
 
     /* 字体定义 */
@@ -47,7 +47,7 @@
 .background-container {
     /* 继承 body 的 padding-top，将内容推到导航栏下方 */
     padding-top: var(--navbar-height);
-   /* 使用 JS 设置的 --bg-color 变量来控制 RGB 灰度值 */
+    /* 使用 JS 设置的 --bg-color 变量来控制 RGB 灰度值 */
     background-color: rgb(var(--bg-color), var(--bg-color), var(--bg-color));
     /* 增加平滑过渡，让颜色渐变不突兀 */
     transition: background-color 2s ease-in-out;

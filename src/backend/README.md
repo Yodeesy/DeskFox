@@ -54,10 +54,13 @@ POST
 
 `data`: 写入的数据
 
+`key`: 密码
+
 ```json
 {
     "index": "1",
-    "data": "Hello, deskfox!"
+    "data": "Hello, deskfox!",
+    "key": "1234"
 }
 ```
 
