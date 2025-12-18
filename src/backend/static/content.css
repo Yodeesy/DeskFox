@@ -10,7 +10,9 @@
 
 /* 引入更现代、跨平台的字体栈 */
 :root {
-    --primary-font-stack: 'Inter', 'SF Pro Display', 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, 'Noto Sans SC', sans-serif;
+    --primary-font-stack:
+        'Inter', 'SF Pro Display', 'Segoe UI', 'Roboto', 'Helvetica Neue',
+        Arial, 'Noto Sans SC', sans-serif;
     --secondary-font-stack: 'Georgia', 'SimSun', 'Songti SC', serif;
 }
 
@@ -39,11 +41,13 @@
     top: 0;
     /* transition: background 2s; */
     animation: spin 13s infinite ease;
-    background: conic-gradient(from 90deg,
-            #ffd1dc,
-            #c7ceea,
-            #a8dadc,
-            rgba(220, 220, 220, 0.5));
+    background: conic-gradient(
+        from 90deg,
+        #ffd1dc,
+        #c7ceea,
+        #a8dadc,
+        rgba(220, 220, 220, 0.5)
+    );
 }
 
 @keyframes spin {
@@ -57,9 +61,7 @@
 }
 
 .color-box p {
-    background: linear-gradient(to right,
-            #fdf6db,
-            #faffdb);
+    background: linear-gradient(to right, #fdf6db, #faffdb);
     -webkit-background-clip: text;
     background-clip: text;
 
@@ -236,7 +238,10 @@
     pointer-events: none;
     transition: none;
     /* 霓虹发光效果 */
-    box-shadow: 0 0 5px currentColor, 0 0 10px currentColor, 0 0 20px currentColor;
+    box-shadow:
+        0 0 5px currentColor,
+        0 0 10px currentColor,
+        0 0 20px currentColor;
 }
 
 /* 波纹动画 */

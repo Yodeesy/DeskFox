@@ -1,6 +1,20 @@
 // deno-lint-ignore-file
 // import { handleStaticFile } from './staticFile.js'
 // const config = JSON.parse(Deno.readTextFileSync('./src/backend/config.json'))
+import { crypto } from 'https://deno.land/std@0.224.0/crypto/mod.ts'
+
+// 计算字符串的 SHA-256
+const sha256 = async (text) => {
+    const encoder = new TextEncoder()
+    const data = encoder.encode(text)
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data)
+    const hashArray = Array.from(new Uint8Array(hashBuffer))
+    const hashHex = hashArray.map((b) => b.toString(16).padStart(2, '0')).join(
+        '',
+    )
+    return hashHex
+}
+
 const config = {
     'pathname': '/stories',
     'staticpath': './src/backend/static',
@@ -12,8 +26,9 @@ const handleStaticFile = async (req) => {
     const path = decodeURIComponent(url.pathname)
 
     // 限制在 static 目录下
-    const filePath = `${config.staticpath}${path === '/' ? '/index.html' : path
-        }`
+    const filePath = `${config.staticpath}${
+        path === '/' ? '/index.html' : path
+    }`
 
     try {
         await Deno.stat(filePath)
@@ -56,13 +71,22 @@ const handleDataGet = async (req) => {
     }
 }
 
+const SHA256_VALUE =
+    '76c7b9b4e7bb7f4f0b5ad2120526cda883c01b8a62c40d750239da24ce4a6640'
+
 const handleDataUpdate = async (req) => {
     const url = new URL(req.url)
     try {
-        const { index, data } = await req.json()
-        if (!index || !data) {
+        const { index, data, key } = await req.json()
+        if (!index || !data || !key) {
             return new Response('无效的 JSON 请求体', { status: 400 })
         }
+        //验证密码
+        let sha = await sha256(key)
+        if (sha !== SHA256_VALUE) {
+            return new Response('密码错误', { status: 401 })
+        }
+
         const kv = await Deno.openKv()
 
         const setResult = await kv.set(['zst', index.toString()], data)
