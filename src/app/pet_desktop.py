@@ -151,40 +151,42 @@ class DesktopPet:
                 pass
 
         # 每 100ms 檢查一次隊列
-        self._poller_id = self.tk_root.after(100, self._process_queue)
+        self._poller_id = self.tk_root.after(50, self._process_queue)
         print("DEBUG: Queue poller started.", flush=True)
 
     def _process_queue(self):
         """
         主线程处理事件队列
         """
-        # 每轮最多处理 5 个事件
-        MAX_ITEMS_PER_TICK = 5
+        start_time = time.time()
+        MAX_TIME_MS = 16  # 确保不阻塞 GUI
 
         processed = 0
-        while processed < MAX_ITEMS_PER_TICK:
+        while processed < 3:
+            if (time.time() - start_time) * 1000 >= MAX_TIME_MS:
+                break
             try:
                 item = self._tk_queue.get_nowait()
+                # 处理钓鱼结果
+                if isinstance(item, tuple) and item[0] == "story_result":
+                    _, is_successful, payload, story_id = item
+                    self.handle_fishing_result(
+                        is_successful=is_successful,
+                        story_data_or_error=payload,
+                        story_id=story_id
+                    )
+                else:
+                    print(f"WARNING: Unknown item in queue: {item}", flush=True)
+                processed += 1
             except queue.Empty:
                 break
 
-            processed += 1
-            print(f"DEBUG: Queue item: {item}", flush=True)
-
-            # 处理钓鱼结果
-            if isinstance(item, tuple) and item[0] == "story_result":
-                _, is_successful, payload, story_id = item
-                self.handle_fishing_result(
-                    is_successful=is_successful,
-                    story_data_or_error=payload,
-                    story_id=story_id
-                )
-            else:
-                print(f"WARNING: Unknown item in queue: {item}", flush=True)
+        # 自适应间隔控制
+        interval = 250 if processed == 0 else 50
 
         # GUI 永远不会被阻塞
         if self.tk_root and self.tk_root.winfo_exists():
-            self._poller_id = self.tk_root.after(250, self._process_queue)
+            self._poller_id = self.tk_root.after(interval, self._process_queue)
         else:
             print("WARNING: Tk root destroyed, stopping poller", flush=True)
 

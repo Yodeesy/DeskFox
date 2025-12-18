@@ -3,7 +3,7 @@
 import customtkinter as ctk
 import tkinter as tk
 from config_manager import DEFAULT_CONFIG_FILE_NAME, PERSISTENT_CONFIG_KEYS, load_config
-from utils import resource_path
+from utils import resource_path, check_single_instance
 from pet_desktop import DesktopPet
 import sys
 import json
@@ -155,6 +155,7 @@ FULL_DEFAULT_CONFIG.update(DEFAULT_CONFIG)    # 添加/更新硬编码的状态�
 app_config = load_config(FULL_DEFAULT_CONFIG)
 
 if __name__ == "__main__":
+    check_single_instance()
     try:
         # 1. Initialize the hidden Tkinter main loop
         tk_root = tk.Tk()
