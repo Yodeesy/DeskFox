@@ -1,124 +1,149 @@
-# story_manager.py
+"""Network layer for fetching and writing story data from the DeskFox API."""
+
+from __future__ import annotations
+
+import sys
+import threading
+from typing import Any, Dict, Optional, Tuple
 
 import requests
-import threading
-import sys
-from typing import Dict
+
 
 class StoryManager:
-    def __init__(self, pet_context, base_url, pathname):
-        self.pet = pet_context
-        self.base_url = base_url
-        self.pathname = pathname
-        self.full_url = f"{self.base_url}{self.pathname}"
-        self.last_read_index = 0
+    """Handles async HTTP fetches for fishing story results.
 
-    def get_next_story_id(self):
+    Communicates with a remote Deno backend that stores story data in
+    Deno KV. Network calls run on daemon threads to avoid blocking the
+    main Pygame loop; results are delivered via a thread-safe queue.
+    """
+
+    REQUEST_TIMEOUT_S: int = 5
+    NON_FOX_STORY_RANGE: Tuple[int, int] = (11, 20)
+
+    def __init__(
+        self, pet_context: Any, base_url: str, pathname: str
+    ) -> None:
+        """Initialize the story manager with the backend URL.
+
+        Args:
+            pet_context: The ``DesktopPet`` instance.
+            base_url: Base URL of the Deno story server.
+            pathname: API path (typically ``/stories``).
         """
-        确定下一个要从 API 获取的数据索引。
+        self.pet: Any = pet_context
+        self.base_url: str = base_url
+        self.pathname: str = pathname
+        self.full_url: str = f"{self.base_url}{self.pathname}"
+        self.last_read_index: int = 0
+
+    def get_next_story_id(self) -> int:
+        """Return the next story index to fetch from the API.
+
+        Returns:
+            ``last_read_index + 1`` based on the pet's current index.
         """
         self.last_read_index = self.pet.last_read_index
         return self.last_read_index + 1
 
-    def fetch_story_sync(self, index) -> Dict:
-        """
-        同步调用 Web GET API 获取指定索引的数据。
+    def fetch_story_sync(self, index: int) -> Optional[Dict[str, Any]]:
+        """Synchronously fetch story data for a given index.
+
+        Attempts standard JSON parsing first, then falls back to
+        ``ast.literal_eval`` for Python-literal responses.
+
+        Args:
+            index: The story index to request.
+
+        Returns:
+            A dictionary with ``title``, ``author``, and ``content`` keys,
+            or ``None`` if the request fails or the response is invalid.
         """
         try:
-            params = {'index': index}
-            response = requests.get(self.full_url, params=params, timeout=5)
+            params: Dict[str, int] = {"index": index}
+            response = requests.get(
+                self.full_url, params=params, timeout=self.REQUEST_TIMEOUT_S
+            )
 
             if response.status_code == 200:
-                raw_content = response.text
+                raw_content: str = response.text
                 try:
-                    # 方法1: 先尝试标准的JSON解析
-                    story_data = response.json()
-                except ValueError as json_error:
-                    print(f"DEBUG: JSON解析失败，尝试其他方法: {json_error}")
-
+                    story_data: Dict[str, Any] = response.json()
+                except ValueError:
+                    import ast
                     try:
-                        # 方法2: 使用ast.literal_eval解析Python字面量
-                        import ast
                         story_data = ast.literal_eval(raw_content)
-                        print("DEBUG: 使用ast.literal_eval解析成功")
-                    except (ValueError, SyntaxError) as ast_error:
+                    except (ValueError, SyntaxError):
                         return None
 
-                # 验证必要的字段是否存在
-                if isinstance(story_data, dict) and all(key in story_data for key in ['title', 'author', 'content']):
-
+                required_keys = ["title", "author", "content"]
+                if isinstance(story_data, dict) and all(
+                    key in story_data for key in required_keys
+                ):
                     return story_data
                 else:
-                    print("ERROR: Response missing required fields or not a dict")
                     return None
             else:
-                print(f"ERROR: Failed to fetch story. Status: {response.status_code}")
                 return None
 
         except requests.exceptions.RequestException as e:
             print(f"ERROR: Network error during story fetch: {e}")
             return None
 
-    def fetch_story_async(self, story_id):
-        """
-        在後台執行緒中異步執行網路請求，並將結果放入主執行緒隊列。
+    def fetch_story_async(self, story_id: int) -> None:
+        """Fetch story data on a background daemon thread.
 
-        這是修改後的邏輯：後台執行緒只負責網路I/O，並將結果放入 pet._tk_queue。
-        主執行緒的 _process_queue 方法將會輪詢並處理這個結果。
+        The result is pushed into the pet's ``_tk_queue`` for the main
+        thread to pick up via its queue poller.
+
+        Args:
+            story_id: The story index to request from the API.
         """
 
-        def target():
-            # 1. 異步調用 StoryManager 的獲取邏輯 (在後台執行緒中)
+        def target() -> None:
             story_data_or_error = self.fetch_story_sync(story_id)
-
             is_successful = isinstance(story_data_or_error, dict)
             payload = story_data_or_error
+            queue_item: Tuple[str, bool, Any, int] = (
+                "story_result", is_successful, payload, story_id,
+            )
 
-            # 2. 構造隊列項
-            # 結構: ("story_result", is_successful, payload, story_id)
-            queue_item = ("story_result", is_successful, payload, story_id)
-
-            # 3. 關鍵：直接將結果放入線程安全的隊列
             try:
-                # 使用 self.pet._tk_queue，這是 DesktopPet 實例中的 Queue 物件
                 self.pet._tk_queue.put(queue_item)
             except Exception as e:
-                # 只有在隊列對象無效時才會失敗
-                print(f"ERROR: [Async Thread] Failed to push result to queue: {e}", file=sys.stderr, flush=True)
+                print(
+                    f"ERROR: [Async Thread] Failed to push result to queue: {e}",
+                    file=sys.stderr,
+                    flush=True,
+                )
 
         thread = threading.Thread(target=target)
         thread.daemon = True
         thread.start()
 
-    def write_data_sync(self, index, data):
-        """
-        同步调用 Web POST API 写入数据。
+    def write_data_sync(
+        self, index: str, data: Dict[str, Any]
+    ) -> Optional[str]:
+        """Synchronously POST data to the API for the given index.
 
         Args:
-            index (str or int): 想要写入的数据的索引。
-            data (dict): 写入的数据。
+            index: The target story index (sent as a string).
+            data: A dictionary to write.
 
         Returns:
-            str: API 返回的成功/失败信息，如果失败返回 None。
+            The API response text on success, or ``None`` on failure.
         """
         try:
-            json_payload = {
-                "index": str(index),
-                "data": data
-            }
-            # POST 请求不需要 URL 参数，数据在 JSON body 中
+            json_payload: Dict[str, Any] = {"index": str(index), "data": data}
             response = requests.post(
                 self.full_url,
                 json=json_payload,
-                timeout=5,
-                headers={'Content-Type': 'application/json'}  # 显式设置 content-type
+                timeout=self.REQUEST_TIMEOUT_S,
+                headers={"Content-Type": "application/json"},
             )
 
             if response.status_code == 200:
-                # API 返回两句话，写入成功或写入失败
                 return response.text
             else:
-                print(f"ERROR: Failed to write data. Status: {response.status_code}")
                 return None
 
         except requests.exceptions.RequestException as e:

@@ -1,24 +1,22 @@
-/* ---------------------------------------------------- */
-/* 1. 全局重置
-/* ---------------------------------------------------- */
-* {
-    box-sizing: border-box;
-    padding: 0;
-    margin: 0;
-    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-}
+/* --- 1. Global resets — see style.css for the * rule --- */
 
-/* 引入更现代、跨平台的字体栈 */
 :root {
     --primary-font-stack:
         'Inter', 'SF Pro Display', 'Segoe UI', 'Roboto', 'Helvetica Neue',
         Arial, 'Noto Sans SC', sans-serif;
     --secondary-font-stack: 'Georgia', 'SimSun', 'Songti SC', serif;
+
+    /* Unified design tokens */
+    --card-radius: 16px;
+    --card-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+    --card-shadow-hover: 0 8px 30px rgba(0, 0, 0, 0.14);
+    --card-padding: 28px;
+    --section-gap: 24px;
+    --transition-lift: transform 0.25s ease, box-shadow 0.25s ease;
 }
 
-/* ---------------------------------------------------- */
-/* 2. Color Box (按要求保持不变) */
-/* ---------------------------------------------------- */
+/* --- 2. Hero (Color Box) --- */
+
 .color-box {
     height: 250px;
     width: 100%;
@@ -26,9 +24,22 @@
     align-items: center;
     justify-content: center;
     color: white;
-    font-size: 100px;
+    font-size: 72px;
     position: relative;
     background: transparent;
+}
+
+.color-box::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    background: linear-gradient(
+        to bottom,
+        transparent 60%,
+        rgba(0, 0, 0, 0.15) 100%
+    );
+    pointer-events: none;
 }
 
 .color-box::after {
@@ -39,7 +50,6 @@
     width: 100%;
     left: 0;
     top: 0;
-    /* transition: background 2s; */
     animation: spin 13s infinite ease;
     background: conic-gradient(
         from 90deg,
@@ -51,127 +61,110 @@
 }
 
 @keyframes spin {
-    0% {
-        filter: blur(50px) hue-rotate(0deg);
-    }
-
-    100% {
-        filter: blur(50px) hue-rotate(360deg);
-    }
+    0%   { filter: blur(50px) hue-rotate(0deg); }
+    100% { filter: blur(50px) hue-rotate(360deg); }
 }
 
 .color-box p {
+    position: relative;
+    z-index: 100;
     background: linear-gradient(to right, #fdf6db, #faffdb);
     -webkit-background-clip: text;
     background-clip: text;
-
     color: transparent;
     text-shadow:
-        1px 1px 4px rgba(0, 0, 0, 0.3),
-        -1px -1px 4px rgba(255, 255, 255, 0.1);
-    z-index: 100;
+        0 2px 8px rgba(0, 0, 0, 0.25),
+        0 0 2px rgba(255, 255, 255, 0.15);
 }
 
-/* ---------------------------------------------------- */
-/* 3. Content Box & Display (核心布局修改) */
-/* ---------------------------------------------------- */
+/* --- 3. Content layout --- */
+
 .content-box {
     width: 100%;
-    /* ⭐ 启用 Flexbox，实现三列并排 */
     display: flex;
-    align-items: flex-start; /* 顶部对齐 */
+    align-items: flex-start;
     margin: 50px 0;
     padding: 5% 10% 0;
-    gap: 30px;
+    gap: var(--section-gap);
     justify-content: space-between;
 }
 
-/* ---------------------------------------------------- */
-/* 3.1 左侧展示区域 */
-/* ---------------------------------------------------- */
+/* --- 3.1 Display area (carousel + description) --- */
+
 .display-box {
-    /* 调整 .display-box 的布局，使其内部的 pic-box 和 des-box 垂直堆叠 */
     display: flex;
     flex-direction: column;
-    gap: 15px; /* 图片和描述框之间的间距 */
-    width: 460px; /* ⭐ 确保左侧区域总宽度固定 */
+    gap: var(--section-gap);
+    width: 460px;
     flex-shrink: 0;
-
-    border-radius: 30px;
+    border-radius: var(--card-radius);
     overflow: hidden;
-
-    mask-image:
-        linear-gradient(to bottom, transparent, black 6%),
-        linear-gradient(to top, transparent, black 6%),
-        linear-gradient(to right, transparent, black 6%),
-        linear-gradient(to left, transparent, black 6%);
-    -webkit-mask-composite: intersect;
-    mask-composite: intersect;
+    box-shadow: var(--card-shadow);
 }
 
 .pic-box {
     height: 400px;
-    width: 100%; /* 占满 display-box 的宽度 */
+    width: 100%;
     background-color: #f7f7f7;
-    padding: 30px;
+    padding: var(--card-padding);
     flex-shrink: 0;
+    border-radius: var(--card-radius);
 }
 
 .des-box {
     height: 250px;
-    width: 100%; /* 占满 display-box 的宽度 */
+    width: 100%;
     background-color: #a5c3e0;
-    padding: 0 30px;
+    padding: var(--card-padding);
     flex-shrink: 0;
-    border-radius: 15px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    border-radius: var(--card-radius);
+    box-shadow: var(--card-shadow);
+    transition: var(--transition-lift);
 }
 
-/* ---------------------------------------------------- */
-/* 3.2 中间装饰区域 (用于局部波纹) */
-/* ---------------------------------------------------- */
+.des-box:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--card-shadow-hover);
+}
+
+/* --- 3.2 Decorate area (ripple container) --- */
+
 .decorate-box {
-    /*  关键修改：强制固定尺寸和相对定位 */
-    position: relative; /* 波纹元素定位基准 */
-    width: 300px; /* 设定宽度 */
-    height: 665px; /* 调整高度以匹配 .display-box 的总高度 (400 + 250 + 15 间距) */
-    overflow: hidden; /* 裁剪波纹 */
+    position: relative;
+    width: 300px;
+    height: 665px;
+    overflow: hidden;
     flex-shrink: 0;
+    border-radius: var(--card-radius);
+    background: rgba(255, 255, 255, 0.3);
 }
 
-/* ---------------------------------------------------- */
-/* 4. Notice Box (尺寸修改以适应布局) */
-/* ---------------------------------------------------- */
-.notice-box {
-    /*  调整高度，使其与 display-box 总高度一致 */
-    height: 665px;
-    width: 570px; /* ⭐ 设定宽度 */
-    flex-shrink: 0; /* 防止被挤压 */
+/* --- 4. Notice box --- */
 
+.notice-box {
+    height: 665px;
+    width: 570px;
+    flex-shrink: 0;
     background: #b8d98d;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-    border-radius: 30px;
-    padding: 30px;
+    border-radius: var(--card-radius);
+    box-shadow: var(--card-shadow);
+    padding: var(--card-padding);
     display: flex;
     flex-direction: column;
+    transition: var(--transition-lift);
+}
 
-    mask-image:
-        linear-gradient(to bottom, transparent, black 6%),
-        linear-gradient(to top, transparent, black 6%),
-        linear-gradient(to right, transparent, black 6%),
-        linear-gradient(to left, transparent, black 6%);
-
-    -webkit-mask-composite: intersect;
-    mask-composite: intersect;
-    transform-style: preserve-3d;
+.notice-box:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--card-shadow-hover);
 }
 
 .notice-box h3 {
-    height: 90px;
-    line-height: 80px;
+    height: 70px;
+    line-height: 70px;
     text-align: center;
     font-family: var(--primary-font-stack);
-    font-size: 45px;
+    font-size: 32px;
     font-weight: 600;
     color: #333;
 }
@@ -179,79 +172,124 @@
 .notice-box p {
     position: relative;
     font-family: var(--secondary-font-stack);
-    font-size: 19px;
-    line-height: 1.6;
+    font-size: 17px;
+    line-height: 1.7;
     text-align: left;
     padding: 10px 0;
     color: #555;
-    /* ⭐ 允许内容区域填满可用空间 */
     flex-grow: 1;
 }
 
-/* ---------------------------------------------------- */
-/* 5. 最后一个子模块：联系模块 (保持不变) */
-/* ---------------------------------------------------- */
+/* --- 5. Contact module --- */
+
 .contact-module {
     display: block;
-    margin-top: 9px;
+    margin-top: auto;
     padding: 15px 20px;
-    border-radius: 15px;
-
+    border-radius: var(--card-radius);
     text-align: center;
     text-decoration: none;
     cursor: pointer;
-
     background-color: #daf3bc;
     color: #444;
     font-family: var(--primary-font-stack);
-    font-size: 18px;
+    font-size: 16px;
     font-weight: 600;
-
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-
-    transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+    transition: var(--transition-lift), background-color 0.3s, color 0.3s;
 }
 
 .contact-module:hover {
-    /* 悬停效果：3D 浮动和背景高亮 */
-    transform: perspective(1000px) translateY(-5px) rotateX(1deg);
-
+    transform: translateY(-4px);
     background-color: #86bad5;
     color: #354ecb;
-
-    box-shadow:
-        0 12px 25px rgba(202, 236, 118, 0.3),
-        0 5px 10px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
 }
 
-/* ---------------------------------------------------- */
-/* 6. 雨滴和波纹的局部样式 (应放在 content.css 或 rain.css) */
-/* ---------------------------------------------------- */
+.contact-module:active {
+    transform: scale(0.97);
+}
 
-/* 局部波纹基础样式 - 属于内容区域的装饰，保留在 content.css 中 */
+/* --- 6. Ripple --- */
+
 .ripple {
-    position: absolute; /* 必须是 absolute */
+    position: absolute;
     border-radius: 50%;
-    transform-origin: 50% 50%; /* 确保缩放以中心进行 */
+    transform-origin: 50% 50%;
     transform: scale(0);
     opacity: 0;
     pointer-events: none;
     transition: none;
-    /* 霓虹发光效果 */
     box-shadow:
         0 0 5px currentColor,
         0 0 10px currentColor,
         0 0 20px currentColor;
 }
 
-/* 波纹动画 */
 @keyframes ripple-spread {
-    0% {
-        transform: scale(0);
-        opacity: 1;
+    0%   { transform: scale(0);   opacity: 1; }
+    100% { transform: scale(1.5); opacity: 0; }
+}
+
+/* --- 7. Responsive — single column below 768px --- */
+
+@media (max-width: 768px) {
+    .color-box {
+        height: 180px;
+        font-size: 42px;
     }
-    100% {
-        transform: scale(1.5);
-        opacity: 0;
+
+    .color-box::after {
+        height: 180px;
+    }
+
+    .content-box {
+        flex-direction: column;
+        align-items: center;
+        padding: 5% 4% 0;
+        gap: 20px;
+    }
+
+    .display-box {
+        width: 100%;
+        max-width: 460px;
+    }
+
+    .pic-box {
+        height: auto;
+        aspect-ratio: 4 / 3;
+    }
+
+    .des-box {
+        height: auto;
+    }
+
+    .decorate-box {
+        display: none;
+    }
+
+    .notice-box {
+        width: 100%;
+        max-width: 570px;
+        height: auto;
+        min-height: 400px;
+    }
+
+    .notice-box h3 {
+        font-size: 26px;
+        height: 50px;
+        line-height: 50px;
+    }
+
+    .notice-box p {
+        font-size: 15px;
+    }
+
+    .des-carousel-track p span {
+        font-size: 20px;
+    }
+
+    .des-carousel-track p {
+        font-size: 15px;
     }
 }

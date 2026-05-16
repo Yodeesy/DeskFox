@@ -5,11 +5,37 @@
 /build
 /dist
 /tools/temp
+/tools/animation_pipeline/my_animations
 
 .idea
 
+# PyInstaller
 DeskFox.spec
+*.spec
 
+# Node
 /src/backend_cloudbase/node_modules
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Internal tools / brainstorming
+.superpowers/
+.claude/
+
+# Animation pipeline work files
+my_animations/
+
+# Test scripts and placeholder assets
+test*.py
+assets/fox_clean.png
+
+# Internal design docs
+docs/superpowers/
+
+# Built executables
+*.exe
 
 test.js

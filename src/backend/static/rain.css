@@ -1,7 +1,7 @@
 /* rain.css - 霓虹雨样式 */
 
-/* 1. 容器样式：#decBox */
-#decBox {
+/* 1. 容器样式：#fullScreenDecorate */
+#fullScreenDecorate {
     position: absolute;
     top: 0;
     left: 0;

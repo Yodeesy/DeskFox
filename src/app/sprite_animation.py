@@ -1,319 +1,542 @@
-# sprite_animation.py
+"""Sprite-sheet loading and animation-frame control.
+
+Provides utilities to extract and scale frames from sprite sheets, and an
+``AnimationController`` class that handles frame indexing, playback rules
+(one-shot, loop, reverse), and sequence transitions.
+"""
+
+from __future__ import annotations
+
+import math
+from typing import Any, Dict, List, Optional, Tuple
 
 import pygame
-import math
-from utils import resource_path  # Kept commented as per original
 
-def load_frames_from_sheet(filepath, frame_w, frame_h, target_w, target_h, target_frames, no_scaling=False):
-    """
-    Loads, extracts, and scales animation frames from a sprite sheet.
-    Creates default test frames if loading fails.
+from utils import resource_path
+
+
+def load_frames_from_sheet(
+    filepath: str,
+    frame_w: float,
+    frame_h: float,
+    target_w: int,
+    target_h: int,
+    target_frames: int,
+    no_scaling: bool = False,
+) -> List[pygame.Surface]:
+    """Extract and scale animation frames from a sprite sheet image.
+
+    Frames are read left-to-right, top-to-bottom. If the sheet fails to
+    load, a fallback placeholder frame is returned.
 
     Args:
-        filepath (str): Path to the sprite sheet image.
-        frame_w (int): Width of a single frame in the source sheet.
-        frame_h (int): Height of a single frame in the source sheet.
-        target_w (int): Desired final width for the scaled frame.
-        target_h (int): Desired final height for the scaled frame.
-        target_frames (int): Total number of frames to extract.
-        no_scaling (bool): If True, frames are loaded but not scaled to target_w/h.
+        filepath: Path to the sprite sheet PNG.
+        frame_w: Width of a single source frame in pixels.
+        frame_h: Height of a single source frame in pixels.
+        target_w: Desired output frame width (scaling).
+        target_h: Desired output frame height (scaling).
+        target_frames: Total number of frames to extract.
+        no_scaling: If True, keep frames at their original size.
 
     Returns:
-        list: A list of pygame.Surface objects (animation frames).
+        A list of ``pygame.Surface`` objects, one per frame.
     """
-    absolute_path = resource_path(filepath)
-    frames = []
+    absolute_path: str = resource_path(filepath)
+    frames: List[pygame.Surface] = []
     frame_w = math.ceil(frame_w)
     frame_h = math.ceil(frame_h)
+
     try:
-        sprite_sheet = pygame.image.load(absolute_path).convert_alpha()
+        sprite_sheet: pygame.Surface = pygame.image.load(
+            absolute_path
+        ).convert_alpha()
+    except Exception:
+        # Create a visible fallback placeholder so the app doesn't crash.
+        placeholder: pygame.Surface = pygame.Surface(
+            (frame_w, frame_h), pygame.SRCALPHA
+        )
+        placeholder.fill((0, 0, 0, 0))
+        pygame.draw.circle(
+            placeholder, (255, 100, 100, 180),
+            (frame_w // 2, frame_h // 2), frame_w // 2 - 1,
+        )
+        frames.append(placeholder)
+        return [
+            pygame.transform.smoothscale(f, (target_w, target_h)).convert_alpha()
+            for f in frames
+        ]
 
-    except Exception as e:
-        # Failed to load image, create a visible test image as fallback.
-        sprite_sheet = pygame.Surface((frame_w, frame_h), pygame.SRCALPHA)
-        sprite_sheet.fill((0, 0, 0, 0))
-        pygame.draw.circle(sprite_sheet, (255, 100, 100, 180), (frame_w // 2, frame_h // 2), frame_w // 2 - 1)
-
-        frames.append(sprite_sheet)
-        return [pygame.transform.smoothscale(f, (target_w, target_h)).convert_alpha() for f in frames]
-
-    # Iterate through the sprite sheet to extract frames
     for y in range(0, sprite_sheet.get_height(), frame_h):
         for x in range(0, sprite_sheet.get_width(), frame_w):
             if len(frames) >= target_frames:
                 break
 
-            frame_rect = pygame.Rect(x, y, frame_w, frame_h)
-
+            frame_rect: pygame.Rect = pygame.Rect(x, y, frame_w, frame_h)
             if frame_rect.width > 0 and frame_rect.height > 0:
-                # Extract and convert frame to alpha format
-                frame = sprite_sheet.subsurface(frame_rect).convert_alpha()
+                frame: pygame.Surface = (
+                    sprite_sheet.subsurface(frame_rect).convert_alpha()
+                )
                 frames.append(frame)
+
         if len(frames) >= target_frames:
             break
 
-    # Fallback if no frames were extracted (e.g., file loaded but sheet is empty)
     if not frames:
-        test_frame = pygame.Surface((target_w, target_h), pygame.SRCALPHA)
+        # Sheet loaded but was empty; still provide a fallback.
+        test_frame: pygame.Surface = pygame.Surface(
+            (target_w, target_h), pygame.SRCALPHA
+        )
         test_frame.fill((0, 0, 0, 0))
-        pygame.draw.circle(test_frame, (255, 100, 100, 180), (target_w // 2, target_h // 2), 50)
+        pygame.draw.circle(
+            test_frame, (255, 100, 100, 180),
+            (target_w // 2, target_h // 2), 50,
+        )
         frames = [test_frame]
+    elif not no_scaling:
+        frames = [
+            pygame.transform.smoothscale(f, (target_w, target_h)).convert_alpha()
+            for f in frames
+        ]
     else:
-        # Conditional scaling: scale frames or just ensure alpha conversion.
-        if not no_scaling:
-            frames = [pygame.transform.smoothscale(f, (target_w, target_h)).convert_alpha() for f in frames]
-        else:
-            frames = [f.convert_alpha() for f in frames]
+        frames = [f.convert_alpha() for f in frames]
 
     return frames
 
-def load_animation(pet_instance, animation_name, config_key=None, no_scaling=False, is_magic_type=False):
-    """
-    加载动画帧和范围
+
+def load_animation(
+    pet_instance: Any,
+    animation_name: str,
+    config_key: Optional[str] = None,
+    no_scaling: bool = False,
+    is_magic_type: bool = False,
+) -> None:
+    """Load animation frames and frame ranges from the animation config.
 
     Args:
-        pet_instance: pet实例对象
-        animation_name: 动画名称（作为字典键）
-        config_key: 配置中的键名（如果与animation_name不同时使用）
-        no_scaling: 是否不缩放帧
-        is_magic_type: 是否是magic类型（有子范围）
+        pet_instance: The ``DesktopPet`` instance.
+        animation_name: Key for the animation in the pet's config.
+        config_key: Override for the config lookup key (defaults to
+            ``animation_name``).
+        no_scaling: If True, do not scale frames to the pet's size.
+        is_magic_type: If True, this animation has named sub-ranges
+            (e.g. ``magic_start``, ``magic_keep``).
     """
-    pet = pet_instance
+    pet: Any = pet_instance
     if config_key is None:
         config_key = animation_name
 
-    anim_config = pet.animation_config[config_key]
-    frames = load_frames_from_sheet(
+    anim_config: Dict[str, Any] = pet.animation_config[config_key]
+    frames: List[pygame.Surface] = load_frames_from_sheet(
         anim_config["filepath"],
         anim_config["frame_w"],
         anim_config["frame_h"],
         pet.width,
         pet.height,
         anim_config["total_frames"],
-        no_scaling=no_scaling
+        no_scaling=no_scaling,
     )
 
     pet.all_animations[animation_name] = frames
 
     if is_magic_type:
-        # 处理有子范围的动画（如magic）
         for sub_name, ranges in anim_config["ranges"].items():
             pet.animation_ranges[f"{sub_name}"] = ranges
     else:
-        # 处理普通动画范围
-        pet.animation_ranges[animation_name] = anim_config["ranges"][animation_name]
+        pet.animation_ranges[animation_name] = (
+            anim_config["ranges"][animation_name]
+        )
 
-def load_dragging_animations(pet_instance):
-    """加载所有拖拽动画变体"""
-    pet = pet_instance
-    dragging_options = pet.animation_config["dragging"]
+
+def load_dragging_animations(pet_instance: Any) -> None:
+    """Load all dragging animation variants from the animation config.
+
+    Each variant (e.g. ``drag_A``, ``drag_B``) registers frame lists and
+    sub-range entries (``start``, ``hold``, ``release``) on the pet.
+
+    Args:
+        pet_instance: The ``DesktopPet`` instance.
+    """
+    pet: Any = pet_instance
+    dragging_options: List[Dict[str, Any]] = pet.animation_config["dragging"]
     pet.available_drag_prefixes = []
 
     for group in dragging_options:
-        prefix = group["prefix"]
+        prefix: str = group["prefix"]
         pet.available_drag_prefixes.append(prefix)
 
-        drag_frames = load_frames_from_sheet(
+        drag_frames: List[pygame.Surface] = load_frames_from_sheet(
             group["filepath"],
             group["frame_w"],
             group["frame_h"],
             pet.width,
             pet.height,
-            group["total_frames"]
+            group["total_frames"],
         )
-        frame_key = f"{prefix}_frames"
+        frame_key: str = f"{prefix}_frames"
 
         if drag_frames:
             pet.all_animations[frame_key] = drag_frames
 
-        # 存储拖拽子序列的范围
         for sub_name, ranges in group["ranges"].items():
             pet.animation_ranges[f"{prefix}_{sub_name}"] = ranges
 
+
+def register_animation_metadata(
+    pet_instance: Any,
+    animation_name: str,
+    config_key: Optional[str] = None,
+    no_scaling: bool = False,
+    is_magic_type: bool = False,
+) -> None:
+    """Register animation metadata without loading frames.
+
+    Stores filepath, dimensions, and frame count on the controller so
+    frames can be loaded on demand when the animation is first played.
+
+    Args:
+        pet_instance: The ``DesktopPet`` instance.
+        animation_name: Key for the animation in the pet's config.
+        config_key: Override for the config lookup key.
+        no_scaling: If True, do not scale frames to the pet's size.
+        is_magic_type: If True, register sub-ranges (e.g. magic_start, magic_keep).
+    """
+    pet: Any = pet_instance
+    if config_key is None:
+        config_key = animation_name
+
+    anim_config: Dict[str, Any] = pet.animation_config[config_key]
+
+    pet.animator.register_metadata(
+        source_name=animation_name,
+        filepath=anim_config["filepath"],
+        frame_w=anim_config["frame_w"],
+        frame_h=anim_config["frame_h"],
+        total_frames=anim_config["total_frames"],
+        target_w=pet.width,
+        target_h=pet.height,
+        no_scaling=no_scaling,
+    )
+
+    if is_magic_type:
+        for sub_name, ranges in anim_config["ranges"].items():
+            pet.animation_ranges[f"{sub_name}"] = ranges
+    else:
+        pet.animation_ranges[animation_name] = (
+            anim_config["ranges"][animation_name]
+        )
+
+
+def register_dragging_metadata(pet_instance: Any) -> None:
+    """Register dragging animation metadata without loading frames.
+
+    Args:
+        pet_instance: The ``DesktopPet`` instance.
+    """
+    pet: Any = pet_instance
+    dragging_options: List[Dict[str, Any]] = pet.animation_config["dragging"]
+    pet.available_drag_prefixes = []
+
+    for group in dragging_options:
+        prefix: str = group["prefix"]
+        pet.available_drag_prefixes.append(prefix)
+
+        frame_key: str = f"{prefix}_frames"
+
+        pet.animator.register_metadata(
+            source_name=frame_key,
+            filepath=group["filepath"],
+            frame_w=group["frame_w"],
+            frame_h=group["frame_h"],
+            total_frames=group["total_frames"],
+            target_w=pet.width,
+            target_h=pet.height,
+            no_scaling=False,
+        )
+
+        for sub_name, ranges in group["ranges"].items():
+            pet.animation_ranges[f"{prefix}_{sub_name}"] = ranges
+
+
 class AnimationController:
+    """Manages playback of named animation sequences.
+
+    Supports three playback modes:
+        - ``loop_reverse`` — play forward to the last frame, then reverse
+          back to the first frame and repeat.
+        - ``one_shot`` — play forward once and stop.
+        - ``one_shot_reverse`` — play backward from the last frame once
+          and stop.
+
+    Call ``set_animation(name)`` to switch sequences, then call
+    ``update_frame()`` each tick. Finished one-shot sequences are detected
+    via ``check_finished_and_advance()``.
     """
-    Manages multiple animation sequences, handles frame indexing, looping rules,
-    and transitions between sequences.
-    """
-    # Defines the playback rules for different animation sub-sequences
-    ANIMATION_RULES = {
-        'idle': {'type': 'loop_reverse'},  # Loop and reverse direction when boundaries reached
-        'start': {'type': 'one_shot'},  # Play once forward
-        'hold': {'type': 'loop_reverse'},
-        'release': {'type': 'one_shot_reverse'},  # Play once backward
-        'display': {'type': 'loop_reverse'},
-        'teleport': {'type': 'one_shot'},
-        'magic_start': {'type': 'one_shot'},
-        'magic_keep': {'type': 'loop_reverse'},
-        'fishing': {'type': 'one_shot'},
-        'bye': {'type': 'one_shot'},
-        'upset': {'type': 'loop_reverse'},
-        'angry': {"type": "one_shot"},
-        'butterfly': {'type': 'loop_reverse'},
+
+    ANIMATION_RULES: Dict[str, Dict[str, str]] = {
+        "idle":         {"type": "loop_reverse"},
+        "start":        {"type": "one_shot"},
+        "hold":         {"type": "loop_reverse"},
+        "release":      {"type": "one_shot_reverse"},
+        "display":      {"type": "loop_reverse"},
+        "teleport":     {"type": "one_shot"},
+        "magic_start":  {"type": "one_shot"},
+        "magic_keep":   {"type": "loop_reverse"},
+        "fishing":      {"type": "one_shot"},
+        "bye":          {"type": "one_shot"},
+        "upset":        {"type": "loop_reverse"},
+        "angry":        {"type": "one_shot"},
+        "butterfly":    {"type": "loop_reverse"},
     }
 
-    def __init__(self, animations_data, animation_ranges):
-        """
-        Initializes the controller with loaded frames and frame ranges.
+    MAX_CACHED: int = 3
+
+    def __init__(
+        self,
+        animations_data: Dict[str, List[pygame.Surface]],
+        animation_ranges: Dict[str, Tuple[int, int]],
+    ) -> None:
+        """Initialize the controller with pre-loaded frames and ranges.
 
         Args:
-            animations_data (dict): Mapping animation source keys (e.g., 'idle', 'drag_A_frames') to lists of frames.
-            animation_ranges (dict): Mapping sequence names (e.g., 'idle', 'drag_A_start') to (start, end) frame indices.
+            animations_data: Mapping from source keys (e.g. ``'idle'``,
+                ``'drag_A_frames'``) to lists of frame surfaces.
+            animation_ranges: Mapping from sequence names (e.g.
+                ``'idle'``, ``'drag_A_start'``) to ``(start, end)``
+                frame index tuples.
         """
-        self.animations = animations_data
-        self.animation_ranges = animation_ranges
-        self.current_sequence_name = None
+        self.animations: Dict[str, List[pygame.Surface]] = animations_data
+        self.animation_ranges: Dict[str, Tuple[int, int]] = animation_ranges
+        self.current_sequence_name: Optional[str] = None
 
-        # Run-time State
-        self.current_frames = []
-        self.total_frames = 0
-        self.current_index = 0.0  # Use float for smoother index updates if needed
-        self.direction = 1  # 1: forward, -1: reverse
-        self.start_frame = 0  # Start index for the current sequence playback
-        self.end_frame = 0  # End index for the current sequence playback
-        self.is_playing_one_shot = False
-        self.is_finished = False
-        self.next_sequence_on_finish = None  # Name of the sequence to switch to after a one-shot finishes
+        self.current_frames: List[pygame.Surface] = []
+        self.total_frames: int = 0
+        self.current_index: float = 0.0
+        self.direction: int = 1
+        self.start_frame: int = 0
+        self.end_frame: int = 0
+        self.is_playing_one_shot: bool = False
+        self.is_finished: bool = False
+        self.next_sequence_on_finish: Optional[str] = None
 
-    def set_animation(self, sequence_name, next_sequence=None):
-        """
-        Switches to a new animation sequence and resets index and playback state.
+        # Lazy-loading state.
+        self._anim_metadata: Dict[str, Dict[str, Any]] = {}
+        self._frame_cache: Dict[str, List[pygame.Surface]] = {}
+        self._cache_order: List[str] = []
+
+    def register_metadata(
+        self,
+        source_name: str,
+        filepath: str,
+        frame_w: float,
+        frame_h: float,
+        total_frames: int,
+        target_w: int,
+        target_h: int,
+        no_scaling: bool = False,
+    ) -> None:
+        """Store animation metadata for on-demand frame loading.
 
         Args:
-            sequence_name (str): The name of the sequence to switch to (e.g., 'drag_A_start').
-            next_sequence (str, optional): The sequence name to transition to upon completion of a one-shot animation.
+            source_name: Cache key (e.g. ``'idle'``, ``'drag_A_frames'``).
+            filepath: Path to the sprite sheet PNG.
+            frame_w: Source frame width in pixels.
+            frame_h: Source frame height in pixels.
+            target_w: Desired output frame width.
+            target_h: Desired output frame height.
+            total_frames: Total number of frames to extract.
+            no_scaling: If True, keep frames at original size.
+        """
+        self._anim_metadata[source_name] = {
+            "filepath": filepath,
+            "frame_w": frame_w,
+            "frame_h": frame_h,
+            "target_w": target_w,
+            "target_h": target_h,
+            "total_frames": total_frames,
+            "no_scaling": no_scaling,
+        }
+
+    def _prewarm(self, source_name: str) -> None:
+        """Load and cache frames for *source_name* immediately.
+
+        Args:
+            source_name: Cache key (e.g. ``'idle'``, ``'drag_A_frames'``).
+        """
+        if source_name in self._frame_cache:
+            return
+        if source_name not in self._anim_metadata:
+            return
+        meta = self._anim_metadata[source_name]
+        frames = load_frames_from_sheet(
+            meta["filepath"],
+            meta["frame_w"],
+            meta["frame_h"],
+            meta["target_w"],
+            meta["target_h"],
+            meta["total_frames"],
+            no_scaling=meta["no_scaling"],
+        )
+        self._frame_cache[source_name] = frames
+        self.animations[source_name] = frames
+
+    def _access_cache(self, source_name: str) -> None:
+        """Mark *source_name* as most-recently-used; evict LRU if over limit.
+
+        Args:
+            source_name: Cache key to promote in the LRU order.
+        """
+        if source_name in self._cache_order:
+            self._cache_order.remove(source_name)
+        self._cache_order.append(source_name)
+
+        while len(self._cache_order) > self.MAX_CACHED:
+            evict_name = self._cache_order.pop(0)
+            if evict_name in self._frame_cache:
+                del self._frame_cache[evict_name]
+            if evict_name in self.animations:
+                del self.animations[evict_name]
+
+    def set_animation(
+        self,
+        sequence_name: str,
+        next_sequence: Optional[str] = None,
+    ) -> None:
+        """Switch to a new animation sequence.
+
+        Args:
+            sequence_name: The sequence to play (e.g. ``'drag_A_start'``).
+            next_sequence: Optional name of the sequence to auto-transition
+                to when a one-shot finishes.
         """
         if sequence_name == self.current_sequence_name:
             return
 
-        # 1. Determine Frame Source and Sub-sequence Name
-        parts = sequence_name.split('_')
+        # Parse sequence name to find the frame source.
+        parts: List[str] = sequence_name.split("_")
 
-        if parts[0] == 'drag':
-            # Example: 'drag_A_start' -> prefix 'drag_A', sub_name 'start', source 'drag_A_frames'
-            prefix = f"{parts[0]}_{parts[1]}"
-            sub_name = parts[2]
-            frame_source_name = f"{prefix}_frames"
-        elif sequence_name in ['magic_start', 'magic_keep']:
-            # Handle Magic animations which share the same source sheet
-            prefix = None
+        if parts[0] == "drag":
+            prefix: str = f"{parts[0]}_{parts[1]}"
+            sub_name: str = parts[2]
+            frame_source_name: str = f"{prefix}_frames"
+        elif sequence_name in ("magic_start", "magic_keep"):
             sub_name = sequence_name
-            frame_source_name = 'magic'
+            frame_source_name = "magic"
         else:
-            # Simple animation name (e.g., 'idle', 'teleport')
-            prefix = None
             sub_name = sequence_name
             frame_source_name = sequence_name
 
-        rule = self.ANIMATION_RULES.get(sub_name if prefix else sequence_name)
+        rule: Optional[Dict[str, str]] = self.ANIMATION_RULES.get(
+            sub_name if parts[0] == "drag" else sequence_name
+        )
 
-        if not rule or frame_source_name not in self.animations:
+        if not rule or (frame_source_name not in self.animations and frame_source_name not in self._anim_metadata):
             return
 
-        # 2. Update Frame List and Range
         self.current_sequence_name = sequence_name
-        self.current_frames = self.animations[frame_source_name]
+
+        # Lazy-load frames on cache miss.
+        if frame_source_name not in self._frame_cache:
+            if frame_source_name in self._anim_metadata:
+                self._prewarm(frame_source_name)
+            elif frame_source_name not in self.animations:
+                return
+            else:
+                # Legacy path: frames were pre-loaded into self.animations.
+                self._frame_cache[frame_source_name] = (
+                    self.animations[frame_source_name]
+                )
+                self._cache_order.append(frame_source_name)
+
+        self._access_cache(frame_source_name)
+        self.current_frames = self._frame_cache[frame_source_name]
         self.total_frames = len(self.current_frames)
 
-        # Get playback range from ranges dictionary
         if sequence_name in self.animation_ranges:
-            self.start_frame, self.end_frame = self.animation_ranges[sequence_name]
+            self.start_frame, self.end_frame = (
+                self.animation_ranges[sequence_name]
+            )
         else:
-            # Fallback: use the entire frame list
             self.start_frame, self.end_frame = 0, self.total_frames - 1
 
-        # 3. Set Playback State and Direction
-        self.is_playing_one_shot = (rule['type'].startswith('one_shot'))
+        self.is_playing_one_shot = rule["type"].startswith("one_shot")
         self.is_finished = False
 
-        if rule['type'] == 'one_shot_reverse':
-            # Reverse animation (e.g., 'release'): Start at the end frame, move backward.
+        if rule["type"] == "one_shot_reverse":
             self.current_index = float(self.end_frame)
             self.direction = -1
         else:
-            # Forward animation (e.g., 'start', 'loop'): Start at the start frame, move forward.
             self.current_index = float(self.start_frame)
             self.direction = 1
 
-        # Save the next sequence name for transition
         self.next_sequence_on_finish = next_sequence
 
-    def update_frame(self):
-        """
-        Updates the animation frame index for the current sequence based on its rule.
-        """
+    def update_frame(self) -> None:
+        """Advance the frame index according to the current playback rule."""
         if self.total_frames <= 1 or self.is_finished:
             return
 
         self.current_index += self.direction
 
-        # --- One-Shot Logic ---
         if self.is_playing_one_shot:
-
-            # Forward playback, reached end boundary
             if self.direction == 1 and self.current_index > self.end_frame:
                 self.current_index = float(self.end_frame)
                 self.is_finished = True
-
-            # Reverse playback, reached start boundary
-            elif self.direction == -1 and self.current_index < self.start_frame:
+            elif (
+                self.direction == -1
+                and self.current_index < self.start_frame
+            ):
                 self.current_index = float(self.start_frame)
                 self.is_finished = True
-
             return
 
-        # --- Loop Logic (Loop & Reverse) ---
-
-        # Looping forward, reached end boundary
+        # Loop-reverse: bounce at boundaries.
         if self.current_index > self.end_frame:
             self.direction = -1
-            # Adjust index to prevent immediate flip back if range is too small
-            self.current_index = float(self.end_frame - 1) if self.end_frame > self.start_frame else float(
-                self.start_frame)
-
-        # Looping backward, reached start boundary
+            self.current_index = (
+                float(self.end_frame - 1)
+                if self.end_frame > self.start_frame
+                else float(self.start_frame)
+            )
         elif self.current_index < self.start_frame:
             self.direction = 1
-            self.current_index = float(self.start_frame + 1) if self.end_frame > self.start_frame else float(
-                self.start_frame)
+            self.current_index = (
+                float(self.start_frame + 1)
+                if self.end_frame > self.start_frame
+                else float(self.start_frame)
+            )
 
-    def get_current_frame(self):
-        """Returns the current Pygame Surface frame."""
-        if not self.current_frames:
-            # Safe fallback: return a minimal transparent Surface
-            return pygame.Surface((1, 1), pygame.SRCALPHA)
-
-        # Ensure index is within the bounds [0, total_frames - 1]
-        index = max(0, min(int(self.current_index), self.total_frames - 1))
-        return self.current_frames[index]
-
-    def check_finished_and_advance(self):
-        """
-        Checks if a one-shot animation has finished.
-        If finished, it handles the transition to the next predefined sequence.
+    def get_current_frame(self) -> pygame.Surface:
+        """Return the current frame surface.
 
         Returns:
-            str/bool/None: The name of the sequence switched to (str),
-                           True if finished but no next sequence, or None if still playing.
+            The ``pygame.Surface`` for the current frame index, or a
+            minimal transparent surface if no frames are loaded.
+        """
+        if not self.current_frames:
+            return pygame.Surface((1, 1), pygame.SRCALPHA)
+
+        index: int = max(
+            0, min(int(self.current_index), self.total_frames - 1)
+        )
+        return self.current_frames[index]
+
+    def check_finished_and_advance(self) -> Optional[Any]:
+        """Check if a one-shot has finished and auto-advance if configured.
+
+        Returns:
+            The name of the next sequence if auto-advanced, ``True`` if
+            the one-shot finished with no next sequence configured, or
+            ``None`` if still playing.
         """
         if self.is_finished and self.is_playing_one_shot:
-
-            # Reset finished flag immediately to allow next state to react
             self.is_finished = False
 
-            # 1. Check for a predefined next sequence (e.g., magic_start -> magic_keep)
             if self.next_sequence_on_finish:
-                name_to_advance = self.next_sequence_on_finish
-
-                # Clear next_sequence flag
+                name_to_advance: Optional[str] = self.next_sequence_on_finish
                 self.next_sequence_on_finish = None
-
-                # Transition to the next sequence
                 self.set_animation(name_to_advance)
-
                 return name_to_advance
 
-            # 2. No predefined next sequence (e.g., teleport finished -> needs state change)
             return True
 
         return None

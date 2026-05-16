@@ -1,132 +1,45 @@
-# main.py
+"""DeskFox desktop pet application entry point.
+
+Initializes the Tkinter root, loads configuration, creates the
+``DesktopPet`` instance, and starts the main event loop.
+"""
+
+from __future__ import annotations
+
+import json
+import sys
+import tkinter as tk
+from typing import Any, Dict
 
 import customtkinter as ctk
-import tkinter as tk
-from config_manager import DEFAULT_CONFIG_FILE_NAME, PERSISTENT_CONFIG_KEYS, load_config
-from utils import resource_path, check_single_instance
+
+from animation_config import ANIMATION_CONFIG
+from config_manager import (
+    DEFAULT_CONFIG_FILE_NAME,
+    PERSISTENT_CONFIG_KEYS,
+    load_config,
+)
 from pet_desktop import DesktopPet
-import sys
-import json
+from utils import check_single_instance, resource_path
 
-# --- Initialization and Configuration ---
-
-# Critical fix: Deactivate automatic DPI scaling before starting Tkinter.
-# This prevents CTK from changing the process's DPI mode, ensuring the Pygame window size remains correct.
+# Prevent CTK from changing the process DPI mode, which would cause
+# the Pygame window size to be incorrect on high-DPI displays.
 try:
     ctk.deactivate_automatic_dpi_awareness()
 except AttributeError:
-    # Handles cases where CTK might not be fully initialized or the version is different.
     pass
 
-# === Global Constants ===
-WIDTH, HEIGHT = 150, 150  # Default window size for the idle state
-FPS = 15  # Target frame rate
+# --- Global constants ---
 
-# Animation resource configuration dictionary
-ANIMATION_CONFIG = {
-    "idle": {
-        "filepath": "assets/idle.png",
-        "frame_w": 350,
-        "frame_h": 350,
-        "total_frames": 120,
-        "ranges": {"idle": (0, 119)}
-    },
-    "dragging": [
-        {
-            "prefix": "drag_A",
-            "filepath": "assets/dragging_1.png",
-            "frame_w": 350,
-            "frame_h": 350,
-            "total_frames": 120,
-            "ranges": {
-                "start": (0, 12),  # Animation for picking up
-                "hold": (12, 119),  # Loop animation while holding
-                "release": (0, 12)  # Animation for releasing (will be played in reverse)
-            }
-        },
-        {
-            "prefix": "drag_B",
-            "filepath": "assets/dragging_2.png",
-            "frame_w": 350,
-            "frame_h": 350,
-            "total_frames": 120,
-            "ranges": {
-                "start": (0, 24),  # Animation for picking up
-                "hold": (24, 119),  # Loop animation while holding
-                "release": (0, 24)  # Animation for releasing (will be played in reverse)
-            }
-        }
-    ],
-    "display": {
-        "filepath": "assets/display.png",
-        "frame_w": 350,
-        "frame_h": 350,
-        "total_frames": 120,
-        "ranges": {"display": (0, 119)}
-    },
-    "teleport": {
-        "filepath": "assets/teleport.png",
-        "frame_w": 350,
-        "frame_h": 350,
-        "total_frames": 120,
-        "ranges": {"teleport": (0, 119)}
-    },
-    "magic": {
-        "filepath": "assets/magic.png",
-        "frame_w": 350,
-        "frame_h": 350,
-        "total_frames": 120,
-        "ranges": {
-            "magic_start": (0, 103),
-            "magic_keep": (103, 119),
-        }
-    },
-    "fishing": {
-        "filepath": "assets/fishing.png",
-        "frame_w": 350,
-        "frame_h": 350,
-        "total_frames": 120,
-        "ranges": {"fishing": (0, 119)}
-    },
-    "result": {
-        "filepath": "assets/result.jpg",
-        "frame_w": 150,
-        "frame_h": 150
-    },
-    "bye": {
-        "filepath": "assets/bye.png",
-        "frame_w": 350,
-        "frame_h": 350,
-        "total_frames": 120,
-        "ranges": {"bye": (0, 80)}
-    },
-    "angry": {
-        "filepath": "assets/angry.png",
-        "frame_w": 350,
-        "frame_h": 350,
-        "total_frames": 120,
-        "ranges": {"angry": (0, 119)}
-    },
-    "upset": {
-        "filepath": "assets/upset.png",
-        "frame_w": 350,
-        "frame_h": 350,
-        "total_frames": 120,
-        "ranges": {"upset": (0, 119)}
-    },
-    "butterfly": {
-        "filepath": "assets/butterfly.png",
-        "frame_w": 350,
-        "frame_h": 350,
-        "total_frames": 120,
-        "ranges": {"butterfly": (0, 112)}
-    }
-}
+WIDTH: int = 150
+HEIGHT: int = 150
+FPS: int = 20
 
+# Load the bundled default settings from the config JSON file.
 try:
-    default_path = resource_path(DEFAULT_CONFIG_FILE_NAME)
-    with open(default_path, 'r', encoding='utf-8') as f:
-        DEFAULT_SETTINGS = json.load(f)
+    default_path: str = resource_path(DEFAULT_CONFIG_FILE_NAME)
+    with open(default_path, "r", encoding="utf-8") as f:
+        DEFAULT_SETTINGS: Dict[str, Any] = json.load(f)
 except Exception:
     DEFAULT_SETTINGS = {
         "web_service_url": "https://deskfox.deno.dev",
@@ -136,11 +49,11 @@ except Exception:
         "fishing_cooldown_minutes": 10,
         "fishing_success_rate": 0.6489,
         "upset_interval_minutes": 7,
-        "angry_possibility": 0.54
+        "angry_possibility": 0.54,
     }
 
-# Default configuration used if the config file does not exist
-DEFAULT_CONFIG = {
+# Runtime state defaults (merged with settings at startup).
+DEFAULT_CONFIG: Dict[str, Any] = {
     "rest_interval_minutes": 30,
     "rest_duration_seconds": 30,
     "current_x": 100,
@@ -148,38 +61,31 @@ DEFAULT_CONFIG = {
     "last_read_index": 0,
 }
 
-FULL_DEFAULT_CONFIG = DEFAULT_SETTINGS.copy() # 包含 pet_config.json 的业务参数
-FULL_DEFAULT_CONFIG.update(DEFAULT_CONFIG)    # 添加/更新硬编码的状态参数
+FULL_DEFAULT_CONFIG: Dict[str, Any] = DEFAULT_SETTINGS.copy()
+FULL_DEFAULT_CONFIG.update(DEFAULT_CONFIG)
 
-# Load application configuration at startup
-app_config = load_config(FULL_DEFAULT_CONFIG)
+app_config: Dict[str, Any] = load_config(FULL_DEFAULT_CONFIG)
+
 
 if __name__ == "__main__":
     check_single_instance()
+
     try:
-        # 1. Initialize the hidden Tkinter main loop
-        tk_root = tk.Tk()
-        tk_root.withdraw()  # Hide the Tk root window
+        tk_root: tk.Tk = tk.Tk()
+        tk_root.withdraw()
         tk_root.config = app_config
 
-        # 2. Initialize the DesktopPet with configurations
-        pet = DesktopPet(
+        pet: DesktopPet = DesktopPet(
             width=WIDTH,
             height=HEIGHT,
             fps=FPS,
             animation_config=ANIMATION_CONFIG,
-            initial_config=app_config
+            initial_config=app_config,
         )
-
-        # 将持久化键列表传递给 Pet 实例
         pet.persistent_keys = PERSISTENT_CONFIG_KEYS
-
-        # 3. Store tk_root in the pet instance for use by SettingsWindow and States
         pet.tk_root = tk_root
-        # 启动轮询（主线程调用）
         pet._start_queue_poller()
 
-        # 4. Start the main application loop
         pet.run()
 
     except Exception as e:
@@ -187,6 +93,5 @@ if __name__ == "__main__":
         sys.exit(1)
 
     finally:
-        # Ensure tk_root is properly destroyed upon exit
-        if 'tk_root' in locals() and tk_root.winfo_exists():
+        if "tk_root" in locals() and tk_root.winfo_exists():
             tk_root.destroy()

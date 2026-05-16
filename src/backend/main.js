@@ -1,111 +1,134 @@
-// deno-lint-ignore-file
-// import { handleStaticFile } from './staticFile.js'
-// const config = JSON.parse(Deno.readTextFileSync('./src/backend/config.json'))
+// Deno server — serves static site and a /stories KV API.
+
 import { crypto } from 'https://deno.land/std@0.224.0/crypto/mod.ts'
 
-// 计算字符串的 SHA-256
-const sha256 = async (text) => {
-    const encoder = new TextEncoder()
-    const data = encoder.encode(text)
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data)
-    const hashArray = Array.from(new Uint8Array(hashBuffer))
-    const hashHex = hashArray.map((b) => b.toString(16).padStart(2, '0')).join(
-        '',
-    )
-    return hashHex
-}
+const STORY_WRITE_KEY_HASH = Deno.env.get('STORY_WRITE_KEY_HASH') || ''
 
 const config = {
-    'pathname': '/stories',
-    'staticpath': './src/backend/static',
+    pathname: '/stories',
+    staticpath: './src/backend/static',
 }
+
+// --- Helpers ---
+
+const sha256 = async (text) => {
+    const encoder = new TextEncoder()
+    const hashBuffer = await crypto.subtle.digest('SHA-256', encoder.encode(text))
+    const hashArray = Array.from(new Uint8Array(hashBuffer))
+    return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('')
+}
+
 const NotFound404 = () => new Response('404 Not Found', { status: 404 })
+
+const mimeMap = {
+    html: 'text/html',
+    css: 'text/css',
+    js: 'application/javascript',
+    json: 'application/json',
+    png: 'image/png',
+    jpg: 'image/jpeg',
+    jpeg: 'image/jpeg',
+    ico: 'image/x-icon',
+    svg: 'image/svg+xml',
+    webp: 'image/webp',
+    exe: 'application/vnd.microsoft.portable-executable',
+}
+
+/** Return a short cache TTL based on file type so assets don't re-download
+ *  every page visit.  HTML is never cached; images get 24 h; CSS/JS 1 h. */
+function cacheHeader(ext) {
+    if (ext === 'html') return 'no-cache'
+    if (ext === 'png' || ext === 'jpg' || ext === 'jpeg' || ext === 'ico'
+        || ext === 'svg' || ext === 'webp' || ext === 'exe') {
+        return 'public, max-age=86400'
+    }
+    if (ext === 'css' || ext === 'js') return 'public, max-age=3600'
+    return 'no-cache'
+}
+
+// --- Static-file handler ---
 
 const handleStaticFile = async (req) => {
     const url = new URL(req.url)
-    const path = decodeURIComponent(url.pathname)
+    const rawPath = decodeURIComponent(url.pathname)
 
-    // 限制在 static 目录下
+    // Reject path traversal attempts.
+    if (rawPath.includes('..')) return NotFound404()
+
     const filePath = `${config.staticpath}${
-        path === '/' ? '/index.html' : path
+        rawPath === '/' ? '/index.html' : rawPath
     }`
 
     try {
         await Deno.stat(filePath)
         const file = await Deno.readFile(filePath)
 
-        // 简单的 MIME 类型映射
-        const ext = filePath.split('.').pop()
-        const mime = {
-            html: 'text/html',
-            css: 'text/css',
-            js: 'application/javascript',
-            png: 'image/png',
-            jpg: 'image/jpg',
-            ico: 'image/x-icon',
-        }[ext ?? ''] || 'application/octet-stream'
+        const ext = (filePath.split('.').pop() || '').toLowerCase()
+        const mime = mimeMap[ext] || 'application/octet-stream'
 
         return new Response(file, {
-            headers: { 'Content-Type': mime },
+            headers: {
+                'Content-Type': mime,
+                'Cache-Control': cacheHeader(ext),
+            },
         })
     } catch (err) {
-        if (path === '/.well-known/appspecific/com.chrome.devtools.json') {
+        if (rawPath === '/.well-known/appspecific/com.chrome.devtools.json') {
             return NotFound404()
         }
-        console.log(err)
+        console.error('Static file error:', err)
         return NotFound404()
     }
 }
 
+// --- /stories API ---
+
 const handleDataGet = async (req) => {
     const url = new URL(req.url)
     const index = url.searchParams.get('index')
-    if (!index) return new Response('404 Not Found', { status: 404 })
-    const kv = await Deno.openKv()
+    if (!index) return new Response('Missing ?index=', { status: 400 })
 
-    const result = await kv.get(['zst', index.toString()])
-    if (result.value) {
-        return new Response(JSON.stringify(result.value))
-    } else {
-        return new Response('404 Not Found', { status: 404 })
+    try {
+        const kv = await Deno.openKv()
+        const result = await kv.get(['zst', index.toString()])
+        if (result.value) {
+            return new Response(JSON.stringify(result.value))
+        }
+        return new Response('Not Found', { status: 404 })
+    } catch (err) {
+        console.error('KV get error:', err)
+        return new Response('KV read failed', { status: 500 })
     }
 }
 
-const SHA256_VALUE =
-    '76c7b9b4e7bb7f4f0b5ad2120526cda883c01b8a62c40d750239da24ce4a6640'
-
 const handleDataUpdate = async (req) => {
-    const url = new URL(req.url)
     try {
         const { index, data, key } = await req.json()
         if (!index || !data || !key) {
-            return new Response('无效的 JSON 请求体', { status: 400 })
+            return new Response('Missing index, data, or key', { status: 400 })
         }
-        //验证密码
-        let sha = await sha256(key)
-        if (sha !== SHA256_VALUE) {
-            return new Response('密码错误', { status: 401 })
+
+        const sha = await sha256(key)
+        if (!STORY_WRITE_KEY_HASH || sha !== STORY_WRITE_KEY_HASH) {
+            return new Response('Unauthorized', { status: 401 })
         }
 
         const kv = await Deno.openKv()
-
-        const setResult = await kv.set(['zst', index.toString()], data)
-        return new Response(`写入成功`)
+        await kv.set(['zst', index.toString()], data)
+        return new Response('OK')
     } catch (err) {
-        console.log(err)
-        return new Response(`写入失败, ${JSON.stringify(err)}`, { status: 500 })
+        console.error('KV set error:', err)
+        return new Response('Write failed', { status: 500 })
     }
 }
 
 export const handleZST = async (req) => {
-    if (req.method === 'GET') {
-        return await handleDataGet(req)
-    }
-    if (req.method === 'POST') {
-        return await handleDataUpdate(req)
-    }
-    return new Response('404 Not Found', { status: 404 })
+    if (req.method === 'GET') return await handleDataGet(req)
+    if (req.method === 'POST') return await handleDataUpdate(req)
+    return new Response('Method Not Allowed', { status: 405 })
 }
+
+// --- Serve ---
 
 Deno.serve({
     onListen({ port, hostname }) {

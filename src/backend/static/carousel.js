@@ -1,21 +1,28 @@
-// deno-lint-ignore-file
+/** Image carousel with swipe support and auto-play. */
+
 const track = document.querySelector('.carousel-track')
 const descriptions = document.querySelectorAll('.des-carousel-track p')
 const indicatorsBox = document.querySelector('.indicators')
 const prevBtn = document.querySelector('.prev-btn')
 const nextBtn = document.querySelector('.next-btn')
-let imgs, indicators
+
+let imgs
+let indicators
 let currentIndex = 0
 let autoPlayInterval
+let touchStartX = 0
+let touchEndX = 0
 
 function init() {
     for (let i = 0; i < 8; i++) {
         const img = document.createElement('img')
-        img.src = `./pics/图片${i + 1}.png`
-        img.alt = `图片${i + 1}`
+        img.src = `./pics/${encodeURIComponent('图片')}${i + 1}.png`
+        img.alt = `Screenshot ${i + 1}`
+
         const span = document.createElement('span')
         span.classList.add('indicator')
-        span['data-index'] = 'i'
+        span.dataset.index = i
+
         if (i === 0) {
             img.classList.add('active')
             span.classList.add('active')
@@ -27,60 +34,70 @@ function init() {
     imgs = document.querySelectorAll('.carousel-track img')
     indicators = document.querySelectorAll('.indicator')
 }
+
 init()
 
-// 切换图片函数
 function switchImg(index) {
-    // 移除所有active类
     imgs.forEach((img) => img.classList.remove('active'))
     indicators.forEach((ind) => ind.classList.remove('active'))
     descriptions.forEach((des) => des.classList.remove('active'))
-    // 添加当前active类
+
     imgs[index].classList.add('active')
     indicators[index].classList.add('active')
     descriptions[index].classList.add('active')
     currentIndex = index
 }
 
-// 下一张
+// --- Button navigation ---
 nextBtn.addEventListener('click', () => {
-    let nextIndex = (currentIndex + 1) % imgs.length
-    switchImg(nextIndex)
+    switchImg((currentIndex + 1) % imgs.length)
 })
 
-// 上一张
 prevBtn.addEventListener('click', () => {
-    let prevIndex = (currentIndex - 1 + imgs.length) % imgs.length
-    switchImg(prevIndex)
+    switchImg((currentIndex - 1 + imgs.length) % imgs.length)
 })
 
-// 点击指示器切换
-indicators.forEach((ind, index) => {
-    ind.addEventListener('click', () => switchImg(index))
+// --- Indicator clicks ---
+indicatorsBox.addEventListener('click', (e) => {
+    const ind = e.target.closest('.indicator')
+    if (!ind) return
+    const idx = parseInt(ind.dataset.index, 10)
+    if (!Number.isNaN(idx)) switchImg(idx)
 })
 
-// 自动播放
+// --- Touch / swipe support ---
+document.querySelector('.carousel-container').addEventListener(
+    'touchstart', (e) => { touchStartX = e.changedTouches[0].screenX },
+    { passive: true },
+)
+
+document.querySelector('.carousel-container').addEventListener(
+    'touchend', (e) => {
+        touchEndX = e.changedTouches[0].screenX
+        const delta = touchStartX - touchEndX
+        if (Math.abs(delta) > 40) {
+            if (delta > 0) {
+                switchImg((currentIndex + 1) % imgs.length)
+            } else {
+                switchImg((currentIndex - 1 + imgs.length) % imgs.length)
+            }
+        }
+    },
+    { passive: true },
+)
+
+// --- Auto-play with hover pause ---
 function autoPlay() {
     autoPlayInterval = setInterval(() => {
-        let nextIndex = (currentIndex + 1) % imgs.length
-        switchImg(nextIndex)
-    }, 5000) // 5秒切换一次
+        switchImg((currentIndex + 1) % imgs.length)
+    }, 5000)
 }
 
-// 鼠标悬停暂停自动播放
 document.querySelector('.carousel-container').addEventListener(
-    'mouseenter',
-    () => {
-        clearInterval(autoPlayInterval)
-    },
+    'mouseenter', () => clearInterval(autoPlayInterval),
 )
-
-// 鼠标离开恢复自动播放
 document.querySelector('.carousel-container').addEventListener(
-    'mouseleave',
-    autoPlay,
+    'mouseleave', autoPlay,
 )
-
-// 初始化自动播放
 
 autoPlay()

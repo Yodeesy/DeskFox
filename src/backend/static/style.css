@@ -14,6 +14,7 @@
     --color-shadow-light: rgba(0, 0, 0, 0.1); /* 白天标准阴影 */
     --color-shadow-dark: rgba(255, 255, 255, 0.08); /* 夜晚柔和阴影 */
     --color-shadow-dynamic: var(--color-shadow-light); /* 动态阴影变量 */
+    --color-navbar-scrolled: rgba(255, 255, 255, 0.85); /* 滚动毛玻璃背景 */
     --color-btn-default: black; /* 默认按钮背景色 */
     --color-btn-rec: #4c8e75; /* 推荐按钮背景色 */
     --color-btn-text: var(--color-secondary); /* 按钮文本动态变量，默认白色 */
@@ -36,8 +37,6 @@
     margin: 0;
     padding: 0;
     box-sizing: border-box;
-    /* 规范化：添加平滑过渡 */
-    transition: all 0.2s ease-in-out;
 }
 
 /* ---------------------------------------------------- */
@@ -79,7 +78,15 @@ body {
     width: 100%;
     z-index: 1000;
     height: var(--navbar-height);
-    transition: background-color 1s ease-in-out, color 1s ease-in-out;
+    transition: background-color 1s ease-in-out, color 1s ease-in-out, box-shadow 0.3s ease;
+}
+
+/* Scroll state — frosted glass when scrolled past 50px. */
+.navbar.scrolled {
+    background-color: var(--color-navbar-scrolled);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
 }
 
 .navbar .header-container {
@@ -105,18 +112,20 @@ body {
 /* 4. 按钮样式 (Button Styles) */
 /* ---------------------------------------------------- */
 .navbar .dl-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     height: 50px;
     width: 140px;
-    /* 规范化：使用 flex 或 line-height: 1 来居中，这里使用 padding/line-height 保持原意 */
-    line-height: 50px;
     font-size: 16px;
     background-color: var(--color-btn-default);
     color: var(--color-btn-text);
-    border: none; /* 明确移除边框 */
+    border: none;
     border-radius: 6px;
     cursor: pointer;
     margin-right: var(--spacing-md);
-    padding: 0 15px; /* 确保文本不会太贴边 */
+    padding: 0 15px;
+    text-decoration: none;
 }
 
 #rec-btn {
@@ -124,8 +133,12 @@ body {
 }
 
 .navbar .dl-btn:hover {
-    /* 规范化：使用 scale3d 优化性能 */
-    transform: scale3d(1.05, 1.05, 1.05);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+}
+
+.navbar .dl-btn:active {
+    transform: scale(0.97);
 }
 
 .git-btn {
@@ -141,7 +154,12 @@ body {
 }
 
 .git-btn:hover {
-    border: 1px solid aqua; /* 规范化：使用边框或 outline */
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+    transform: translateY(-2px);
+}
+
+.git-btn:active {
+    transform: scale(0.97);
 }
 
 /* ---------------------------------------------------- */
@@ -149,32 +167,8 @@ body {
 /* ---------------------------------------------------- */
 .content {
     width: 100%;
-    /* 规范化：移除冗余或注释掉的样式 */
 }
-/* ---------------------------------------------------- */
-/* 5.1 内容框容器布局 (Content Box Container Layout) */
-/* ---------------------------------------------------- */
-.content-box {
-    display: flex; /* ⭐ 启用 Flexbox，实现三列并排 */
-    justify-content: space-between; /* 在子元素之间创建空间 */
-    align-items: flex-start; /* 顶部对齐 */
-    gap: var(--spacing-md); /* 子元素之间的间距 */
-}
-
-/* ---------------------------------------------------- */
-/* 5.2 内部模块尺寸控制 */
-/* ---------------------------------------------------- */
-
-/* 确保 display-box 和 notice-box 都有明确的宽度 */
-.display-box {
-    width: 559px; /* ⭐ 假设左侧模块宽度 */
-    flex-shrink: 0; /* 防止被挤压 */
-}
-
-.notice-box {
-    width: 390px; /* ⭐ 假设右侧模块宽度 */
-    flex-shrink: 0;
-}
+/* Layout rules for .content-box, .display-box, .notice-box are in content.css */
 
 /* ---------------------------------------------------- */
 /* 6. 底部 (Footer) */

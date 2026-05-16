@@ -51,6 +51,7 @@ function updateBackgroundColor() {
         bodyStyle.setProperty('--color-btn-default', 'white')
         bodyStyle.setProperty('--color-btn-rec', '#6e987c') // 按钮背景变浅
         bodyStyle.setProperty('--color-btn-text', 'black') // 按钮文本变黑
+        bodyStyle.setProperty('--color-navbar-scrolled', 'rgba(51, 51, 51, 0.9)')
     } else {
         // 白天模式
         bodyStyle.setProperty('--color-primary', '#333')
@@ -67,6 +68,7 @@ function updateBackgroundColor() {
         bodyStyle.setProperty('--color-btn-default', 'black')
         bodyStyle.setProperty('--color-btn-rec', '#4c8e75')
         bodyStyle.setProperty('--color-btn-text', 'white') // 按钮文本变白
+        bodyStyle.setProperty('--color-navbar-scrolled', 'rgba(255, 255, 255, 0.85)')
     }
 }
 
@@ -75,3 +77,19 @@ updateBackgroundColor()
 
 // 每天的小时变化是平滑的，因此每 5 分钟更新一次就足够平滑且效率高
 setInterval(updateBackgroundColor, 5 * 60 * 1000) // 5分钟更新一次
+
+// --- Navbar scroll blur ---
+const navbar = document.querySelector('.navbar')
+let scrollTicking = false
+
+function onScroll() {
+    if (!scrollTicking) {
+        requestAnimationFrame(() => {
+            navbar.classList.toggle('scrolled', window.scrollY > 50)
+            scrollTicking = false
+        })
+        scrollTicking = true
+    }
+}
+
+window.addEventListener('scroll', onScroll, { passive: true })

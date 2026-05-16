@@ -1,138 +1,247 @@
-# story_display.py
-import customtkinter as ctk
+"""Story display window shown after a successful fishing attempt."""
+
+from __future__ import annotations
+
 from tkinter import messagebox
-from typing import Union, Dict
+from typing import Any, Dict, Optional, Union
+
+import customtkinter as ctk
+
+from acrylic_utils import (
+    ACCENT_ORANGE,
+    ACCENT_ORANGE_HOVER,
+    CARD_BG,
+    CARD_BORDER,
+    TEXT_PRIMARY,
+    TEXT_SECONDARY,
+    apply_acrylic_effect,
+    force_render_fix,
+)
 from config_manager import save_config
 
-# 设置外观和主题 (与主程序保持一致)
+PARCHMENT_BG: tuple[str, str] = ("#faf8f5", "#2a2520")
+PARCHMENT_TEXT: tuple[str, str] = ("#3e3028", "#d4c8bc")
+
 ctk.set_appearance_mode("System")
 ctk.set_default_color_theme("dark-blue")
 
 
 class StoryDisplayWindow(ctk.CTkToplevel):
-    """
-    一个独立的、临时的窗口，用于展示漂流瓶故事内容（古老羊皮卷样式）。
-    这个窗口不依赖于 SettingsWindow。
+    """A temporary popup displaying a retrieved story in parchment style.
+
+    This window is independent of the SettingsWindow and appears after
+    the user confirms they want to open a fished-up message bottle.
     """
 
-    def __init__(self, master, story: Dict, story_id: int, pet_instance):
+    def __init__(
+        self,
+        master: Any,
+        story: Dict[str, str],
+        story_id: int,
+        pet_instance: Any,
+    ) -> None:
+        """Create the story display window with card-based layout.
+
+        Args:
+            master: The Tkinter root window.
+            story: Dictionary with ``title``, ``author``, and ``content`` keys.
+            story_id: The numeric story index (shown as a badge).
+            pet_instance: The ``DesktopPet`` instance.
+        """
         super().__init__(master)
 
-        self.pet = pet_instance
+        self.pet: Any = pet_instance
+        self.story_title: str = story.get("title", "Untitled Parchment")
+        self.story_author: str = story.get("author", "Anonymous Traveler")
+        self.story_content: str = story.get(
+            "content", "Content washed away by the sea."
+        )
+        self.story_id: int = story_id
 
-        self.story_title = story.get("title", "無題的羊皮卷")
-        self.story_author = story.get("author", "匿名旅人")
-        self.story_content = story.get("content", "內容已被海水浸濕。")
-        self.story_id = story_id
-
-        self.title(f"漂流瓶 ID: {story_id}")
-        self.gui_width = 700
-        self.gui_height = 900
+        self.title("Message Bottle")
+        self.gui_width: int = 600
+        self.gui_height: int = 750
         self.geometry(f"{self.gui_width}x{self.gui_height}")
-        self.resizable(True, True)
-        self.attributes('-topmost', True)
-        self.transient(master)  # 绑定到主窗口
-        self.main_frame = None
+        self.minsize(500, 400)
+        self.attributes("-topmost", True)
+        self.transient(master)
 
-        # 确保点击窗口标题栏的“X”按钮时也能销毁窗口
         self.protocol("WM_DELETE_WINDOW", self.destroy)
 
-        # 居中显示窗口
-        self.set_initial_position()
+        # Transparent background must be set BEFORE widget creation to avoid
+        # the white-screen bug on certain GPU/driver combinations.
+        try:
+            self.configure(fg_color="transparent")
+        except Exception:
+            pass
 
+        self.set_initial_position()
         self.create_widgets()
 
-    def set_initial_position(self):
-        """計算並設定視窗初始位置為螢幕中心。"""
+        self.after(150, lambda: apply_acrylic_effect(self))
+        self.after(50, lambda: force_render_fix(self))
+
+    # --- Geometry ---
+
+    def set_initial_position(self) -> None:
+        """Center the window on the screen."""
         self.update_idletasks()
-        screen_w = self.pet.full_screen_width
-        screen_h = self.pet.full_screen_height
+        screen_w: int = self.pet.full_screen_width
+        screen_h: int = self.pet.full_screen_height
 
         start_x = (screen_w // 2) - (self.gui_width // 2)
         start_y = (screen_h // 2) - (self.gui_height // 2)
 
         self.wm_geometry(f"+{int(start_x)}+{int(start_y)}")
 
-    def create_widgets(self):
-        """创建并放置所有 UI 元件（羊皮卷模拟）。"""
-        # 主框架使用网格布局，更灵活
-        self.main_frame = ctk.CTkFrame(self)
-        self.main_frame.pack(fill="both", expand=True, padx=10, pady=10)
+    # --- Widgets ---
 
-        # 配置网格权重，使文本框可以扩展
-        self.main_frame.grid_rowconfigure(1, weight=1)
-        self.main_frame.grid_columnconfigure(0, weight=1)
+    def create_widgets(self) -> None:
+        """Build the card-based story UI with header, content, and close."""
+        # --- Header bar ---
+        header_frame: ctk.CTkFrame = ctk.CTkFrame(
+            self, fg_color="transparent",
+        )
+        header_frame.pack(fill="x", padx=16, pady=(16, 4))
 
-        # 标题
-        title_label = ctk.CTkLabel(
-            self.main_frame,
-            text=f"漂流瓶 ({self.story_id})",
+        ctk.CTkLabel(
+            header_frame,
+            text="📜 Message Bottle",
             font=ctk.CTkFont(size=18, weight="bold"),
-            text_color="#f39c12"
-        )
-        title_label.pack(pady=(15, 10))
+            text_color=TEXT_PRIMARY,
+        ).pack(side="left")
 
-        # 故事内容区域 - 使用pack布局并允许扩展
-        story_textbox = ctk.CTkTextbox(
-            self.main_frame,
+        # Story ID badge pill.
+        badge: ctk.CTkFrame = ctk.CTkFrame(
+            header_frame,
+            corner_radius=10,
+            fg_color=ACCENT_ORANGE,
+        )
+        badge.pack(side="right", pady=(4, 0))
+
+        ctk.CTkLabel(
+            badge,
+            text=f"#{self.story_id}",
+            font=ctk.CTkFont(size=12, weight="bold"),
+            text_color="white",
+        ).pack(padx=10, pady=2)
+
+        # --- Separator ---
+        sep: ctk.CTkFrame = ctk.CTkFrame(
+            self, height=1, fg_color=CARD_BORDER,
+        )
+        sep.pack(fill="x", padx=16, pady=(4, 8))
+
+        # --- Content card ---
+        card: ctk.CTkFrame = ctk.CTkFrame(
+            self, corner_radius=12, fg_color=CARD_BG,
+            border_width=1, border_color=CARD_BORDER,
+        )
+        card.pack(fill="both", expand=True, padx=12, pady=(0, 8))
+        card.grid_rowconfigure(3, weight=1)
+        card.grid_columnconfigure(0, weight=1)
+
+        ctk.CTkLabel(
+            card,
+            text=self.story_title,
+            font=ctk.CTkFont(size=18, weight="bold"),
+            text_color=TEXT_PRIMARY,
+            wraplength=540,
+        ).pack(anchor="w", padx=16, pady=(14, 2))
+
+        ctk.CTkLabel(
+            card,
+            text=f"by {self.story_author}",
+            font=ctk.CTkFont(size=13, slant="italic"),
+            text_color=TEXT_SECONDARY,
+        ).pack(anchor="w", padx=16, pady=(0, 8))
+
+        # Card-internal separator.
+        card_sep: ctk.CTkFrame = ctk.CTkFrame(
+            card, height=1, fg_color=CARD_BORDER,
+        )
+        card_sep.pack(fill="x", padx=16, pady=(0, 8))
+
+        textbox: ctk.CTkTextbox = ctk.CTkTextbox(
+            card,
             wrap="word",
-            font=ctk.CTkFont(size=14, family="Courier"),
-            text_color="#4b3832",
-            fg_color="#fcfcfc"
+            font=ctk.CTkFont(size=14),
+            text_color=PARCHMENT_TEXT,
+            fg_color=PARCHMENT_BG,
+            border_width=0,
+            corner_radius=8,
         )
+        textbox.insert("1.0", self.story_content)
+        textbox.configure(state="disabled")
+        textbox.pack(fill="both", expand=True, padx=16, pady=(0, 14))
 
-        full_text = f"{self.story_title}\n{self.story_author}\n\n{self.story_content}"
-        story_textbox.insert("0.0", full_text)
-        story_textbox.configure(state="disabled")
-
-        # 使用fill和expand确保文本框填满可用空间
-        story_textbox.pack(
-            fill="both",
-            expand=True,
-            padx=10,
-            pady=(0, 10)
-        )
-
-        # 关闭按钮
-        close_button = ctk.CTkButton(
-            self.main_frame,
+        # --- Close button ---
+        close_button: ctk.CTkButton = ctk.CTkButton(
+            self,
             text="Close",
             command=self.destroy,
-            fg_color="#34495e"
+            fg_color=ACCENT_ORANGE,
+            hover_color=ACCENT_ORANGE_HOVER,
+            font=ctk.CTkFont(size=14, weight="bold"),
+            corner_radius=8,
+            height=36,
         )
-        close_button.pack(pady=(0, 10))
+        close_button.pack(fill="x", padx=12, pady=(0, 14))
+        close_button.configure(cursor="hand2")
 
-        # 确保窗口显示在最前面
         self.lift()
         self.focus_force()
 
+def show_story_prompt(
+    master: Any,
+    content: Union[str, Dict[str, Any]],
+    story_id: Optional[int] = None,
+    pet_instance: Optional[Any] = None,
+) -> Optional[StoryDisplayWindow]:
+    """Display a confirmation dialog before opening a story window.
 
-def show_story_prompt(master, content: Union[str, Dict], story_id: int = None, pet_instance=None):
+    If the fetch was successful (``story_id`` is set), the user is asked
+    whether to open the bottle. Otherwise a simple error/info message is
+    shown.
+
+    The master window is temporarily made top-most during the dialog to
+    ensure it is visible above the pet window, then restored afterward.
+
+    Args:
+        master: The Tkinter root window.
+        content: Either a story dict with ``title``/``author``/``content``
+            keys, or an error message string.
+        story_id: The story index if the fetch succeeded, or None on failure.
+        pet_instance: The ``DesktopPet`` instance for saving config.
+
+    Returns:
+        A ``StoryDisplayWindow`` if the user confirms, or None otherwise.
     """
-    弹出确认对话框，询问用户是否打开漂流瓶，并在确认后打开 StoryDisplayWindow。
-    """
-    # --- 1) 暂时让 master 置顶 ---
     try:
-        master.attributes('-topmost', True)
+        master.attributes("-topmost", True)
     except Exception:
         pass
 
     try:
         if story_id:
             if messagebox.askyesno(
-                "上钩啦！",
-                f"迷途的旅人哟，狐狸钓到了一个漂流瓶！\n你想要打开看看吗？",
-                parent=master
+                "🍾 Got one!",
+                "A lost traveler — the fox reeled in a message bottle!\n"
+                "Would you like to open it?",
+                parent=master,
             ):
                 save_config(master.config, pet_instance.persistent_keys)
-                return StoryDisplayWindow(master, content, story_id, pet_instance)
-
+                return StoryDisplayWindow(
+                    master, content, story_id, pet_instance
+                )
         else:
-            messagebox.showinfo("悲伤的事情发生了...", content, parent=master)
-
+            messagebox.showinfo(
+                "Something sad happened...", content, parent=master
+            )
     finally:
-        # --- 4) 恢复 master 的置顶状态 ---
         try:
-            master.attributes('-topmost', False)
+            master.attributes("-topmost", False)
         except Exception:
             pass
+
+    return None
