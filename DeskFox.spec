@@ -23,11 +23,11 @@ version = VSVersionInfo(
             StringTable('040904B0', [
                 StringStruct('CompanyName', 'Yodeesy'),
                 StringStruct('FileDescription', 'DeskFox Desktop Pet'),
-                StringStruct('FileVersion', '1.2.0'),
+                StringStruct('FileVersion', '1.2.1'),
                 StringStruct('InternalName', 'DeskFox'),
                 StringStruct('OriginalFilename', 'DeskFox.exe'),
                 StringStruct('ProductName', 'DeskFox'),
-                StringStruct('ProductVersion', '1.2.0'),
+                StringStruct('ProductVersion', '1.2.1'),
             ])
         ]),
         VarFileInfo([

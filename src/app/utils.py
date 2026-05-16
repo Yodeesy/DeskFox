@@ -1,72 +1,65 @@
-# utils.py
-# Utility functions, primarily for handling resource paths in a production environment.
+"""Utility functions for resource path resolution and single-instance enforcement."""
+
+from __future__ import annotations
 
 import os
-import win32event
-import win32api
-import winerror
 import sys
+from typing import Optional
 
-MUTEX_NAME = "DeskFox"
+import win32api
+import win32event
+import winerror
+
+MUTEX_NAME: str = "DeskFox"
+_mutex_handle_ref: Optional[int] = None
 
 
-def check_single_instance():
-    """
-    检查并确保应用程序只有一个实例在运行。
-    如果检测到已有实例，则立即退出程序。
+def check_single_instance() -> None:
+    """Ensure only one instance of the application is running.
+
+    Creates a named Windows mutex. If the mutex already exists, the
+    application exits immediately to prevent duplicate instances.
     """
     try:
-        # 尝试创建一个命名互斥锁（Named Mutex）
-        # 如果互斥锁已存在，win32event.CreateMutex 会返回一个已存在的句柄，
-        # 并且 win32api.GetLastError() 会返回 winerror.ERROR_ALREADY_EXISTS。
-
         mutex_handle = win32event.CreateMutex(None, 1, MUTEX_NAME)
-
-        # 检查错误码
         last_error = win32api.GetLastError()
 
         if last_error == winerror.ERROR_ALREADY_EXISTS:
-            print("檢測到應用程序已在運行。阻止重複啟動。")
-
-            # 立即退出程序，不进行任何初始化
+            print("Another instance is already running. Exiting.")
             sys.exit(0)
 
-        # 如果是第一个实例，mutex_handle 将保持开启状态，直到程序退出。
         global _mutex_handle_ref
         _mutex_handle_ref = mutex_handle
 
     except Exception as e:
-        # 如果 Mutex 检查失败（例如，权限问题），则记录错误并允许继续运行
-        print(f"Mutex 檢查失敗: {e}. 應用程序將繼續啟動。")
+        print(f"Mutex check failed: {e}. Continuing startup.")
 
-def get_project_root():
-    """自动获取项目根目录"""
+
+def get_project_root() -> str:
+    """Return the project root directory (two levels above this file)."""
     current_file_dir = os.path.dirname(os.path.abspath(__file__))
     project_root = os.path.dirname(os.path.dirname(current_file_dir))
     return project_root
 
-def resource_path(relative_path):
-    """
-    Get the absolute path to a resource file, compatible with both
-    development environments and PyInstaller bundled executables.
 
-    When bundled by PyInstaller, resources are extracted to a temporary folder
-    referenced by sys._MEIPASS.
+def resource_path(relative_path: str) -> str:
+    """Get the absolute path to a resource file.
+
+    Works in both development environments and PyInstaller-bundled
+    executables. When bundled, PyInstaller extracts resources to a
+    temporary directory referenced by ``sys._MEIPASS``.
 
     Args:
-        relative_path (str): The relative path to the resource
-                             (e.g., 'assets/image.png').
+        relative_path: Path relative to the project root
+            (e.g. ``'assets/image.png'``).
 
     Returns:
-        str: The absolute path to the resource file.
+        The normalized absolute path to the resource.
     """
     try:
-        # PyInstaller creates a temp directory and sets this attribute
-        base_path = sys._MEIPASS
+        base_path: str = sys._MEIPASS
     except Exception:
-        # Fallback to the current directory for development or unbundled execution
         base_path = get_project_root()
 
     full_path = os.path.join(base_path, relative_path)
     return os.path.normpath(full_path)
-
